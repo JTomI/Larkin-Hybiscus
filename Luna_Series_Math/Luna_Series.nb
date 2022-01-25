@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[     15028,        426]
-NotebookOptionsPosition[     14257,        403]
-NotebookOutlinePosition[     14722,        421]
-CellTagsIndexPosition[     14679,        418]
+NotebookDataLength[     19693,        547]
+NotebookOptionsPosition[     18485,        520]
+NotebookOutlinePosition[     18914,        537]
+CellTagsIndexPosition[     18871,        534]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -66,46 +66,50 @@ Cell[BoxData[{
  RowBox[{
   RowBox[{
    RowBox[{"nmin", "=", "1"}], ";", " ", 
-   RowBox[{"dn", "=", "2"}], ";", " ", 
-   RowBox[{"(*", 
-    RowBox[{
-    "These", " ", "are", " ", "fixed", " ", "for", " ", "the", " ", "sum", 
-     " ", "of", " ", 
-     RowBox[{"Rrect", ".", " ", "dn"}], " ", "is", " ", "2", " ", "because", 
-     " ", "the", " ", "sum", " ", "is", " ", "odd"}], "*)"}], 
-   "\[IndentingNewLine]", 
+   RowBox[{"dn", "=", "2"}], ";"}], " ", 
+  RowBox[{"(*", 
    RowBox[{
-    SubscriptBox["\[Mu]", "w"], " ", "=", " ", ".7978"}], ";", " ", 
-   RowBox[{"(*", " ", 
+   "These", " ", "are", " ", "fixed", " ", "for", " ", "the", " ", "sum", " ",
+     "of", " ", 
+    RowBox[{"Rrect", ".", " ", "dn"}], " ", "is", " ", "2", " ", "because", 
+    " ", "the", " ", "sum", " ", "is", " ", "odd"}], 
+   "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    SubscriptBox["\[Mu]", "w"], " ", "=", " ", ".7978"}], ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
     RowBox[{
+    "Dynamic", " ", "Viscocity", " ", "of", " ", "water", " ", "at", " ", 
+     "30", "\[Degree]C", " ", "in", " ", "units", " ", 
+     RowBox[{"of", " ", "[", 
+      RowBox[{"mPa", "*", "s"}], "]"}], " ", "converted", " ", 
+     RowBox[{"to", " ", "[", 
+      FractionBox["kg", 
+       RowBox[{"mm", " ", "s"}]], "]"}]}], ",", " ", 
+    RowBox[{
+     RowBox[{"[", 
+      RowBox[{"mPa", "*", "s"}], "]"}], "=", 
      RowBox[{
-     "Dynamic", " ", "Viscocity", " ", "of", " ", "water", " ", "at", " ", 
-      "30", "\[Degree]C", " ", "in", " ", "units", " ", 
-      RowBox[{"of", " ", "[", 
-       RowBox[{"mPa", "*", "s"}], "]"}], " ", "converted", " ", 
-      RowBox[{"to", " ", "[", 
-       FractionBox["kg", 
-        RowBox[{"mm", " ", "s"}]], "]"}]}], ",", " ", 
-     RowBox[{
-      RowBox[{"[", 
-       RowBox[{"mPa", "*", "s"}], "]"}], "=", 
+      RowBox[{
+       SuperscriptBox["10", 
+        RowBox[{"-", "3"}]], "[", 
+       FractionBox[
+        RowBox[{"N", " ", "s"}], 
+        SuperscriptBox["m", "2"]], "]"}], "=", 
       RowBox[{
        RowBox[{
         SuperscriptBox["10", 
          RowBox[{"-", "3"}]], "[", 
-        FractionBox[
-         RowBox[{"N", " ", "s"}], 
-         SuperscriptBox["m", "2"]], "]"}], "=", 
-       RowBox[{
-        RowBox[{
-         SuperscriptBox["10", 
-          RowBox[{"-", "3"}]], "[", 
-         FractionBox["kg", 
-          RowBox[{"m", " ", "s"}]], "]"}], "=", " ", 
-        RowBox[{"[", 
-         FractionBox["kg", 
-          RowBox[{"mm", " ", "s"}]], "]"}]}]}]}]}], " ", "*)"}], 
-   "\[IndentingNewLine]", 
+        FractionBox["kg", 
+         RowBox[{"m", " ", "s"}]], "]"}], "=", " ", 
+       RowBox[{"[", 
+        FractionBox["kg", 
+         RowBox[{"mm", " ", "s"}]], "]"}]}]}]}]}], " ", 
+   "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
    RowBox[{
     SubscriptBox["\[Rho]", "w"], "  ", "=", 
     RowBox[{"0.99567", "*", 
@@ -195,11 +199,11 @@ Cell[BoxData[{
     RowBox[{
      RowBox[{"Rrect", "[", 
       RowBox[{"\[Mu]", ",", "h", ",", "w", ",", "L", ",", "3"}], "]"}], "/", 
-     "\[Mu]"}]}], ";", " ", 
-   RowBox[{"(*", 
-    RowBox[{"Main", " ", "chamber", " ", 
-     RowBox[{"resistance", ".", " ", "\[Mu]"}], " ", "ignored", " ", "in", 
-     " ", "ratios"}], "*)"}]}], "\[IndentingNewLine]", 
+     "\[Mu]"}]}], ";"}], " ", 
+  RowBox[{"(*", 
+   RowBox[{"Main", " ", "chamber", " ", 
+    RowBox[{"resistance", ".", " ", "\[Mu]"}], " ", "ignored", " ", "in", " ",
+     "ratios"}], "*)"}], "\[IndentingNewLine]", 
   RowBox[{"(*", 
    RowBox[{
     RowBox[{"Intended", " ", "Main", " ", "Chamber", " ", "Height"}], ";", 
@@ -333,12 +337,54 @@ SubscriptBox[\(Q\), \(tot\)]]\) = \>\"", ",",
       RowBox[{
        RowBox[{"2", "*", 
         RowBox[{"Qa3", "/", "Qc"}]}], "+", "1"}], ")"}], 
-     RowBox[{"-", "1"}]]}], "]"}], ";"}]}], "Input",
+     RowBox[{"-", "1"}]]}], "]"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Print", "[", "\"\<\>\"", "]"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+  "Print", "[", 
+   "\"\<(Misc) Minimum Continuous flowrate at chamber for 5[uL/min] LSPone \
+output;\>\"", "]"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Print", "[", 
+    RowBox[{"\"\<Luna 1:  \!\(\*SubscriptBox[\(Q\), \(min\)]\) = \>\"", ",", 
+     RowBox[{"5000", "*", 
+      SuperscriptBox[
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"2", "*", 
+          RowBox[{"Qa1", "/", "Qc"}]}], "+", "1"}], ")"}], 
+       RowBox[{"-", "1"}]]}], ",", "\"\< [nL/min]\>\""}], "]"}], ";"}], 
+  " "}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Print", "[", 
+    RowBox[{"\"\<Luna 2:  \!\(\*SubscriptBox[\(Q\), \(min\)]\) = \>\"", ",", 
+     RowBox[{"5000", "*", 
+      SuperscriptBox[
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"2", "*", 
+          RowBox[{"Qa2", "/", "Qc"}]}], "+", "1"}], ")"}], 
+       RowBox[{"-", "1"}]]}], ",", "\"\< [nL/min]\>\""}], "]"}], ";"}], 
+  " "}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Print", "[", 
+    RowBox[{"\"\<Luna 3:  \!\(\*SubscriptBox[\(Q\), \(min\)]\) = \>\"", ",", 
+     RowBox[{"5000", "*", 
+      SuperscriptBox[
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"2", "*", 
+          RowBox[{"Qa3", "/", "Qc"}]}], "+", "1"}], ")"}], 
+       RowBox[{"-", "1"}]]}], ",", "\"\< [nL/min]\>\""}], "]"}], ";"}], 
+  " "}]}], "Input",
  CellChangeTimes->{{3.852060328021774*^9, 3.85206036339784*^9}, {
   3.852060407004161*^9, 3.8520604242535686`*^9}, {3.852060464349634*^9, 
-  3.8520606096376076`*^9}},
- CellLabel->
-  "In[714]:=",ExpressionUUID->"b29ee373-c379-4143-8b61-c0554794a0c8"],
+  3.8520606096376076`*^9}, {3.8520643607621555`*^9, 3.852064455706463*^9}},
+ CellLabel->"In[93]:=",ExpressionUUID->"b29ee373-c379-4143-8b61-c0554794a0c8"],
 
 Cell[CellGroupData[{
 
@@ -356,10 +402,12 @@ SubscriptBox[\\(Q\\), \\(c\\)]]\\) = \"\>", "\[InvisibleSpace]",
    " ;  \!\(\*FractionBox[SubscriptBox[\(Q\), \(c\)], SubscriptBox[\(Q\), \
 \(tot\)]]\) = ", 0.2727963769140732],
   Editable->False]], "Print",
- CellChangeTimes->{3.852060651832043*^9},
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622061434`*^9}},
  CellLabel->
   "During evaluation of \
-In[714]:=",ExpressionUUID->"636e52b4-2c3c-46cc-926a-f7e7542f7854"],
+In[93]:=",ExpressionUUID->"5b7ac031-0e64-4de9-9c83-9cff27a16f70"],
 
 Cell[BoxData[
  InterpretationBox[
@@ -375,10 +423,12 @@ SubscriptBox[\\(Q\\), \\(c\\)]]\\) = \"\>", "\[InvisibleSpace]",
    " ;  \!\(\*FractionBox[SubscriptBox[\(Q\), \(c\)], SubscriptBox[\(Q\), \
 \(tot\)]]\) = ", 0.15700074088387678`],
   Editable->False]], "Print",
- CellChangeTimes->{3.852060651832043*^9},
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622061434`*^9}},
  CellLabel->
   "During evaluation of \
-In[714]:=",ExpressionUUID->"0263478a-71a5-412f-9b50-8d256a631d7a"],
+In[93]:=",ExpressionUUID->"db0ee240-1fbd-4833-b00d-1688e10546c7"],
 
 Cell[BoxData[
  InterpretationBox[
@@ -394,16 +444,82 @@ SubscriptBox[\\(Q\\), \\(c\\)]]\\) = \"\>", "\[InvisibleSpace]",
    " ;  \!\(\*FractionBox[SubscriptBox[\(Q\), \(c\)], SubscriptBox[\(Q\), \
 \(tot\)]]\) = ", 0.13604320065557393`],
   Editable->False]], "Print",
- CellChangeTimes->{3.852060651832043*^9},
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622061434`*^9}},
  CellLabel->
   "During evaluation of \
-In[714]:=",ExpressionUUID->"4f726fc5-fadb-4fdd-bba5-5aa2df9d547f"]
+In[93]:=",ExpressionUUID->"49da8eb2-213d-4f4e-8c7a-a8428e0d6217"],
+
+Cell[BoxData["\<\"\"\>"], "Print",
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622217703`*^9}},
+ CellLabel->
+  "During evaluation of \
+In[93]:=",ExpressionUUID->"d00798a1-e2d6-47ee-9df5-14084025665b"],
+
+Cell[BoxData["\<\"(Misc) Minimum Continuous flowrate at chamber for 5[uL/min] \
+LSPone output;\"\>"], "Print",
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622217703`*^9}},
+ CellLabel->
+  "During evaluation of \
+In[93]:=",ExpressionUUID->"b5538036-5d3a-4191-a0ae-a54e963840d3"],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"Luna 1:  \\!\\(\\*SubscriptBox[\\(Q\\), \\(min\\)]\\) = \"\>", 
+   "\[InvisibleSpace]", "1363.981884570366`", 
+   "\[InvisibleSpace]", "\<\" [nL/min]\"\>"}],
+  SequenceForm[
+  "Luna 1:  \!\(\*SubscriptBox[\(Q\), \(min\)]\) = ", 1363.981884570366, 
+   " [nL/min]"],
+  Editable->False]], "Print",
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622217703`*^9}},
+ CellLabel->
+  "During evaluation of \
+In[93]:=",ExpressionUUID->"43e9d09d-4620-4ad9-a5cb-9763c1cf9dbe"],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"Luna 2:  \\!\\(\\*SubscriptBox[\\(Q\\), \\(min\\)]\\) = \"\>", 
+   "\[InvisibleSpace]", "785.0037044193839`", 
+   "\[InvisibleSpace]", "\<\" [nL/min]\"\>"}],
+  SequenceForm[
+  "Luna 2:  \!\(\*SubscriptBox[\(Q\), \(min\)]\) = ", 785.0037044193839, 
+   " [nL/min]"],
+  Editable->False]], "Print",
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622217703`*^9}},
+ CellLabel->
+  "During evaluation of \
+In[93]:=",ExpressionUUID->"6e78c49a-decc-4dbd-b331-ef965de5316d"],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"Luna 3:  \\!\\(\\*SubscriptBox[\\(Q\\), \\(min\\)]\\) = \"\>", 
+   "\[InvisibleSpace]", "680.2160032778696`", 
+   "\[InvisibleSpace]", "\<\" [nL/min]\"\>"}],
+  SequenceForm[
+  "Luna 3:  \!\(\*SubscriptBox[\(Q\), \(min\)]\) = ", 680.2160032778696, 
+   " [nL/min]"],
+  Editable->False]], "Print",
+ CellChangeTimes->{
+  3.852060651832043*^9, 3.852064363703058*^9, 3.852064404842*^9, {
+   3.8520644439586744`*^9, 3.8520644622217703`*^9}},
+ CellLabel->
+  "During evaluation of \
+In[93]:=",ExpressionUUID->"e8f5d74d-452c-4981-b1ca-20b0d8f0c24e"]
 }, Open  ]]
 }, Open  ]]
 },
-WindowSize->{1152., 585.6},
-WindowMargins->{{
-  Automatic, -5.399999999999864}, {-5.399999999999977, Automatic}},
+WindowSize->{1141.2, 579.6},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
 Magnification:>1. Inherited,
 FrontEndVersion->"12.3 for Microsoft Windows (64-bit) (July 9, 2021)",
 StyleDefinitions->"Default.nb",
@@ -421,11 +537,16 @@ CellTagsIndex->{}
 (*NotebookFileOutline
 Notebook[{
 Cell[CellGroupData[{
-Cell[580, 22, 11173, 318, 691, "Input",ExpressionUUID->"b29ee373-c379-4143-8b61-c0554794a0c8"],
+Cell[580, 22, 12697, 364, 796, "Input",ExpressionUUID->"b29ee373-c379-4143-8b61-c0554794a0c8"],
 Cell[CellGroupData[{
-Cell[11778, 344, 814, 17, 40, "Print",ExpressionUUID->"636e52b4-2c3c-46cc-926a-f7e7542f7854"],
-Cell[12595, 363, 817, 17, 40, "Print",ExpressionUUID->"0263478a-71a5-412f-9b50-8d256a631d7a"],
-Cell[13415, 382, 814, 17, 40, "Print",ExpressionUUID->"4f726fc5-fadb-4fdd-bba5-5aa2df9d547f"]
+Cell[13302, 390, 911, 19, 40, "Print",ExpressionUUID->"5b7ac031-0e64-4de9-9c83-9cff27a16f70"],
+Cell[14216, 411, 914, 19, 40, "Print",ExpressionUUID->"db0ee240-1fbd-4833-b00d-1688e10546c7"],
+Cell[15133, 432, 911, 19, 40, "Print",ExpressionUUID->"49da8eb2-213d-4f4e-8c7a-a8428e0d6217"],
+Cell[16047, 453, 279, 6, 22, "Print",ExpressionUUID->"d00798a1-e2d6-47ee-9df5-14084025665b"],
+Cell[16329, 461, 355, 7, 22, "Print",ExpressionUUID->"b5538036-5d3a-4191-a0ae-a54e963840d3"],
+Cell[16687, 470, 588, 14, 22, "Print",ExpressionUUID->"43e9d09d-4620-4ad9-a5cb-9763c1cf9dbe"],
+Cell[17278, 486, 588, 14, 22, "Print",ExpressionUUID->"6e78c49a-decc-4dbd-b331-ef965de5316d"],
+Cell[17869, 502, 588, 14, 22, "Print",ExpressionUUID->"e8f5d74d-452c-4981-b1ca-20b0d8f0c24e"]
 }, Open  ]]
 }, Open  ]]
 }
