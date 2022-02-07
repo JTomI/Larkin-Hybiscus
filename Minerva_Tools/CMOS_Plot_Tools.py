@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import os
 import imageio
+from datetime import datetime
 from tqdm import tqdm
 
 
@@ -14,117 +15,109 @@ class CPT(object):
 		self.path = data_path
 		self.hf = h5py.File(self.path, 'r')
 		self.items = list(self.hf.items())
-		self.list_impedance = self.Get_List(filterstring='impedance')
+		self.list_impedance = self.get_list(filterstring='impedance')
 		self.grp_data = self.hf.get(self.list_impedance[0])
 		self.phase_types = list(self.grp_data.keys()) # Check how many image phases there are in impedance
 		print("Impedance Image Phase Types in the Dataset: ",self.phase_types)
 		print("Number of images in dataset with {} phase(s): ".format(len(self.phase_types)),len(self.items))
 		self.xlim1 = None; self.xlim2 = None; self.ylim1 = None; self.ylim2 = None;
 
-		self.frames = []
-		self.images = []
-
-	def Get_Data(self,index=None):
+	def get_data(self, index=None):
 		grp_data = self.hf.get(self.list_impedance[index])
 		phase_images = [] 
 		for phase in self.phase_types:
 			phase_images.append(grp_data[phase][:])
 		return phase_images
 
-	def Get_List(self,filterstring=None,sortby=None):
+	def get_list(self, filterstring=None):
 		grp_list = []
 		for i in range(len(self.items)):
 			grp = self.items[i]
 			grp_list.append(grp[0])
-		if filterstring is not None:
-			grp_list = [x for x in grp_list if filterstring in x]
-		if sortby is 'time':
-			grp_list = sorted(grp_list,key=lambda x: Get_Time(self.path,x))
+			if filterstring is not None:
+				grp_list = [x for x in grp_list if filterstring in x]
 		return grp_list
 
-	def Edge_Finder1D(self,Array1D=None):
-	    """Finds the two endpoints of a 1D array with boolean entries."""
-	    lims = []
-	    flipper = True
-	    for i in range(len(Array1D)): #Find left limit
-	        if Array1D[i] == flipper:
-	            lims.append(i)
-	            break
-	    for i in range(len(Array1D)): #Find Right limit
-	        if Array1D[len(Array1D)-1-i] == flipper:
-	            lims.append(len(Array1D)-1-i)
-	            break
-	    return lims
+	def edge_finder1d(self, array1d=None):
+		"""Finds the two endpoints of a 1D array with boolean entries."""
+		lims = []
+		for i in range(len(array1d)): #Find left limit
+			if array1d[i] == True:
+				lims.append(i)
+				break
+		for i in range(len(array1d)): #Find Right limit
+			if array1d[len(array1d)-1-i] == True:
+				lims.append(len(array1d)-1-i)
+				break
+		return lims
 
-	def Get_Crop_Lims(self,index=None,thresh=.00005):
-	    """Finds the uFluidic chamber edges in an impedance image using a chosen threshold value, and returns an image cropped to those edges."""
-	    phase_images=self.Get_Data(index=index)
-	    mean_phase = np.zeros_like(phase_images[0])
-	    for phase in phase_images: #Average the image values across all the phases in the dataset for better contrast edge-finding.
-	    	mean_phase += phase/len(phase_images)
-	    mean_x,mean_y = np.mean(mean_phase,axis=0),np.mean(mean_phase,axis=1) #Average across x and y respectively to make clear edges.
-	    xcrop1D,ycrop1D = (mean_x>thresh),(mean_y>thresh) # isolate the region above the threshold, which is the region to crop to. 
-	    [self.xlim1,self.xlim2],[self.ylim1,self.ylim2]= self.Edge_Finder1D(xcrop1D),self.Edge_Finder1D(ycrop1D) #find the edges of the crop.
-	    return self.xlim1,self.xlim2,self.ylim1,self.ylim2
-	
-	def Get_Cropped_Data(self,index=None):
-		"""Get a cropped version of the phase images at index, using the image at ref_index to determine the crop boundaries."""
-		phase_images=self.Get_Data(index=index)
-		if self.xlim1 == None:
-			print("Define crop region with function Get_Crop_Lims")
+	def get_croplims(self, index=None, thresh=.00005):
+		"""Finds the uFluidic chamber edges in an impedance image using a chosen threshold value, and returns an image cropped to those edges."""
+		phase_images=self.get_data(index=index)
+		mean_phase = np.zeros_like(phase_images[0])
+		for phase in phase_images: #Average the image values across all the phases in the dataset for better contrast edge-finding.
+			mean_phase += phase/len(phase_images)
+		mean_x,mean_y = np.mean(mean_phase,axis=0),np.mean(mean_phase,axis=1) #Average across x and y respectively to make clear edges.
+		xcrop1d,ycrop1d = (mean_x>thresh),(mean_y>thresh) # isolate the region above the threshold, which is the region to crop to. 
+		[self.xlim1,self.xlim2],[self.ylim1,self.ylim2] = self.edge_finder1d(xcrop1d),self.edge_finder1d(ycrop1d) #find the edges of the crop.
+		return self.xlim1,self.xlim2,self.ylim1,self.ylim2
+
+	def get_crop(self, index=None):
+		"""Get a cropped version of the phase images at position 'index', having used a reference image to determine the crop boundaries."""
+		if self.xlim1 == None: #Check crop function condition 
+			print("Define crop region with function 'get_croplims'.")
 		else:
+			phase_images=self.get_data(index=index)
 			for i in range(len(phase_images)):
 				phase_images[i]=phase_images[i][self.ylim1:self.ylim2,self.xlim1:self.xlim2]
 			return phase_images
 
-	# def Composite_Image(self,image_1, image_2):
-	# 	image_3 = np.zeros_like(image_1)
-	# 	image_3[0:8,:] =  image_1[0:8,:]
-	# 	for k in range(0,511,64):
-	# 		mean_1 = np.mean(image_1[(k+8):(k+24)])
-	# 		mean_2 = np.mean(image_2[(k+8):(k+24)])
-	# 		image_1[(k+0):,:] = image_1[(k+0):,:] - (mean_1-mean_2)
+	def process_image(self, index=None, Nstd=5, crop=True):
+		"""Returns a smoothed image processed from a 2-phase dataset by removing the stepped effect from the 8 Minerva channel groups.
+		Outliers above standard deviation of 'Nstd' removed."""
+		if len(self.phase_types) != 2: #Check phase adjust function condition
+			print("This algorithm is meant to be applied to 2-phase impedance images only. Current # phases is {}".format(len(self.phase_types)))
+		elif self.xlim1 == None: #Check crop limits condition 
+			print("Define crop region with function 'get_croplims' before processing.")
+		else:
+			[phase1,phase2]=self.get_data(index=index)
+			phase = (phase1+phase2)/2
+			# Perform Normalization per channel
+			normrows = range(self.ylim1,self.ylim2) # Normalize over rows that are within the microfluidic
+			ch0mean = np.mean(phase[normrows, self.xlim1:((self.xlim1//32)+1)*32]) # find mean for leftmost channel that is in microfluidic
+			#Handle channels that are not partially covered in 256 pixel direction. 
+			for ch in range(((self.xlim1//32)+1),(self.xlim2//32)):
+				phase[normrows, ch*32:(ch+1)*32] = phase[normrows, ch*32:(ch+1)*32] / np.mean(phase[normrows, ch*32:(ch+1)*32])*ch0mean
 
-	# 		mean_1 = np.mean(image_1[(k+40):(k+56)])
-	# 		mean_2 = np.mean(image_2[(k+40):(k+56)])
-	# 		image_2[(k+32):,:] = image_2[(k+32):,:] - (mean_2-mean_1)
+			#Handle leftmost channel, partially covered. 
+			phase[normrows, self.xlim1:((self.xlim1//32)+1)*32] = phase[normrows,self.xlim1:((self.xlim1//32)+1)*32]/np.mean(phase[normrows,self.xlim1:((self.xlim1//32)+1)*32])*ch0mean
+			#Handle rightmost channel, partially covered.
+			phase[normrows, (self.xlim2//32)*32:self.xlim2] = phase[normrows,(self.xlim2//32)*32:self.xlim2]/np.mean(phase[normrows, (self.xlim2//32)*32:self.xlim2])*ch0mean
+			# Remove outliers above chosen Nstd
+			phase = np.abs(phase)
+			med=np.median(np.ravel(phase))
+			std=np.std(np.ravel(phase))
+			phase[np.abs(phase-med)>(Nstd*std)] = med
+			vmin=np.mean(phase[normrows,:])-4*np.std(phase[normrows,:])
+			vmax=np.mean(phase[normrows,:])+1*np.std(phase[normrows,:])
+			if crop:
+				return phase[self.ylim1:self.ylim2,self.xlim1:self.xlim2],vmin,vmax
+			else:
+				return phase,vmin,vmax
 
-	# 		image_3[(k+8):(k+56),:] =  image_1[(k+8):(k+56),:]
-	# 		image_3[(k+56):(k+72),:] =  image_2[(k+56):(k+72),:]
-	# 	return image_
-
-	# def Make_Video(self,fps=30,norm_display=False,composite=False,contrast_fix=False,cmap='Spectral',figsize=(16,12),step=1):
-	#     """Returns .gif of Impedance Time Series Data"""
-	#     self.frames = []
-	#     for i in tqdm(range(0,len(self.list_impedance),step),desc="Decoding Images"):
-	#         fig, ax_main = plt.subplots(figsize=figsize)
-	#         image1 = self.Get_Data(self.list_impedance[i])
-	#         # tx = self.Get_Time(self.path,self.list_impedance[i])
-	#         if composite: 
-	#             if i!=(len(self.list_impedance)-1):
-	#                 image2 = self.Get_Data(self.list_impedance[i+1])
-	#                 image = self.Composite_Image(image1,image2)
-	#             else:
-	#                 image=image1  
-	#         else:
-	#             image=image1     
-	#         if contrast_fix:
-	#             if norm_display:
-	#                 im = ax_main.imshow(np.transpose(image)-np.median(image),vmin=-.75,vmax=.75,cmap=cmap)
-	#             else:
-	#                 im = ax_main.imshow(np.transpose(image),vmin=12,vmax=13.5,cmap=cmap)
-	#         else:
-	#             if norm_display:
-	#                 im = ax_main.imshow(np.transpose(image)-np.median(image),cmap=cmap)
-	#             else:
-	#                 im = ax_main.imshow(np.transpose(image),cmap=cmap)    
-	#         fig.colorbar(im,ax=ax_main)
-	#         # ax_main.set_title(str(i) + '   ' + self.list_impedance[i] + ' time elapsed ' + str(tx-self.t0))
-	#         fig.canvas.draw();       # draw the canvas, cache the renderer
-	#         im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-	#         im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-	#         self.frames.append(im)
-	#         plt.close('all')
-	#     print("Saving...")
-	#     imageio.mimsave(self.path.replace(".h5",".gif"), self.frames, fps=fps)
-	#     print("Saved to", self.path.replace(".h5",".gif"))
+	def make_video(self,fps=30,cmap='Spectral',figsize=(16,12),step=1):
+	    """Returns .gif of Impedance Time Series Data"""
+	    self.frames = []
+	    for i in tqdm(range(0,len(self.list_impedance),step),desc="Processing Images"):
+	        fig, ax_main = plt.subplots(figsize=figsize)
+	        image, vmin, vmax = self.process_image(index=i,crop=True)
+	        im = ax_main.imshow(np.flip(np.transpose(image),axis=1),vmin=vmin,vmax=vmax,cmap=cmap)
+	        fig.colorbar(im,ax=ax_main)
+	        fig.canvas.draw();       # draw the canvas, cache the renderer
+	        im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+	        im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+	        self.frames.append(im)
+	        plt.close('all')
+	    print("Saving...")
+	    imageio.mimsave(self.path.replace(".h5",".gif"), self.frames, fps=fps)
+	    print("Saved to", self.path.replace(".h5",".gif"))
