@@ -72,7 +72,7 @@ class CPT(object):
 				phase_images[i]=phase_images[i][self.ylim1:self.ylim2,self.xlim1:self.xlim2]
 			return phase_images
 
-	def process_image(self, index=None, Nstd=5, crop=True):
+	def process_image(self, normrows=None,index=None, Nstd=5, crop=True):
 		"""Returns a smoothed image processed from a 2-phase dataset by removing the stepped effect from the 8 Minerva channel groups.
 		Outliers above standard deviation of 'Nstd' removed."""
 		if len(self.phase_types) != 2: #Check phase adjust function condition
@@ -83,7 +83,8 @@ class CPT(object):
 			[phase1,phase2]=self.get_data(index=index)
 			phase = (phase1+phase2)/2
 			# Perform Normalization per channel
-			normrows = range(self.ylim1,self.ylim2) # Normalize over rows that are within the microfluidic
+			if normrows==None:
+				normrows = range(self.ylim1,self.ylim2) # Normalize over rows that are within the microfluidic
 			ch0mean = np.mean(phase[normrows, self.xlim1:((self.xlim1//32)+1)*32]) # find mean for leftmost channel that is in microfluidic
 			#Handle channels that are not partially covered in 256 pixel direction. 
 			for ch in range(((self.xlim1//32)+1),(self.xlim2//32)):
@@ -105,17 +106,17 @@ class CPT(object):
 			else:
 				return phase,vmin,vmax
 
-	def make_video(self,fps=30,cmap='Spectral',figsize=(16,12),step=1):
+	def make_video(self,fps=30,cmap='Spectral',figsize=(16,12),step=1,normrows=None):
 	    """Returns .gif of Impedance Time Series Data"""
 	    self.frames = []
 	    for i in tqdm(range(0,len(self.list_impedance),step),desc="Processing Images"):
 	        fig, ax_main = plt.subplots(figsize=figsize)
-	        image, vmin, vmax = self.process_image(index=i,crop=True)
+	        image, vmin, vmax = self.process_image(index=i,crop=True,normrows=normrows)
 	        im = ax_main.imshow(np.flip(np.transpose(image),axis=1),vmin=vmin,vmax=vmax,cmap=cmap)
-	        fig.colorbar(im,ax=ax_main)
+	        ax_main.axis('off')
 	        fig.canvas.draw();       # draw the canvas, cache the renderer
 	        im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-	        im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+	        im = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 	        self.frames.append(im)
 	        plt.close('all')
 	    print("Saving...")
