@@ -106,10 +106,10 @@ class CPT(object):
 			else:
 				return phase,vmin,vmax
 
-	def make_video(self,fps=30,cmap='Spectral',figsize=(16,12),step=1,normrows=None):
+	def make_video(self,index_rng=[0,0],fps=30,cmap='Spectral',figsize=(16,12),step=1,normrows=None):
 	    """Returns .gif of Impedance Time Series Data"""
 	    self.frames = []
-	    for i in tqdm(range(0,len(self.list_impedance),step),desc="Processing Images"):
+	    for i in tqdm(range(index_rng[0],index_rng[1],step),desc="Processing Images"):
 	        fig, ax_main = plt.subplots(figsize=figsize)
 	        image, vmin, vmax = self.process_image(index=i,crop=True,normrows=normrows)
 	        im = ax_main.imshow(np.flip(np.transpose(image),axis=1),vmin=vmin,vmax=vmax,cmap=cmap)
