@@ -96,11 +96,7 @@ class CPT(object):
 		vmax=np.mean(phase[normrows,:])+1*np.std(phase[normrows,:])
 		return phase[ylims[0]:ylims[1],xlims[0]:xlims[1]],vmin,vmax
 
-<<<<<<< Updated upstream
-	def make_video(self,index_rng=[0,0],fps=30,cmap='Spectral',figsize=(16,12),step=1,normrows=None):
-=======
-	def make_video(self,fps=30,cmap='Spectral',figsize=(16,12),step=1,xlims=[0,256],ylims=[0,512],normrows=None):
->>>>>>> Stashed changes
+	def make_video(self,fps=30,cmap='Spectral',figsize=(16,12),step=1,xlims=[0,256],ylims=[0,512],normrows=None,index_rng=[0,0]):
 	    """Returns .gif of Impedance Time Series Data"""
 	    self.frames = []
 	    for i in tqdm(range(index_rng[0],index_rng[1],step),desc="Processing Images"):
