@@ -20,7 +20,6 @@ class CPT(object):
 		self.phase_types = list(self.grp_data.keys()) # Check how many image phases there are in impedance
 		print("Impedance Image Phase Types in the Dataset: ",self.phase_types)
 		print("Number of images in dataset with {} phase(s): ".format(len(self.phase_types)),len(self.items))
-		self.xlim1 = None; self.xlim2 = None; self.ylim1 = None; self.ylim2 = None;
 
 	def get_data(self, index=None):
 		grp_data = self.hf.get(self.list_impedance[index])
@@ -59,8 +58,8 @@ class CPT(object):
 			mean_phase += phase/len(phase_images)
 		mean_x,mean_y = np.mean(mean_phase,axis=0),np.mean(mean_phase,axis=1) #Average across x and y respectively to make clear edges.
 		xcrop1d,ycrop1d = (mean_x>thresh),(mean_y>thresh) # isolate the region above the threshold, which is the region to crop to. 
-		[self.xlim1,self.xlim2],[self.ylim1,self.ylim2] = self.edge_finder1d(xcrop1d),self.edge_finder1d(ycrop1d) #find the edges of the crop.
-		return self.xlim1,self.xlim2,self.ylim1,self.ylim2
+		[xlim1,xlim2],[ylim1,ylim2] = self.edge_finder1d(xcrop1d),self.edge_finder1d(ycrop1d) #find the edges of the crop.
+		return [xlim1,xlim2],[ylim1,ylim2]
 
 	def get_crop(self, index=None):
 		"""Get a cropped version of the phase images at position 'index', having used a reference image to determine the crop boundaries."""
@@ -72,46 +71,41 @@ class CPT(object):
 				phase_images[i]=phase_images[i][self.ylim1:self.ylim2,self.xlim1:self.xlim2]
 			return phase_images
 
-	def process_image(self, normrows=None,index=None, Nstd=5, crop=True):
+	def process_image(self, xlims=[0,256],ylims=[0,512],index=None, Nstd=5, normrows=None):
 		"""Returns a smoothed image processed from a 2-phase dataset by removing the stepped effect from the 8 Minerva channel groups.
 		Outliers above standard deviation of 'Nstd' removed."""
-		if len(self.phase_types) != 2: #Check phase adjust function condition
-			print("This algorithm is meant to be applied to 2-phase impedance images only. Current # phases is {}".format(len(self.phase_types)))
-		elif self.xlim1 == None: #Check crop limits condition 
-			print("Define crop region with function 'get_croplims' before processing.")
-		else:
-			[phase1,phase2]=self.get_data(index=index)
-			phase = (phase1+phase2)/2
-			# Perform Normalization per channel
-			if normrows==None:
-				normrows = range(self.ylim1,self.ylim2) # Normalize over rows that are within the microfluidic
-			ch0mean = np.mean(phase[normrows, self.xlim1:((self.xlim1//32)+1)*32]) # find mean for leftmost channel that is in microfluidic
-			#Handle channels that are not partially covered in 256 pixel direction. 
-			for ch in range(((self.xlim1//32)+1),(self.xlim2//32)):
-				phase[normrows, ch*32:(ch+1)*32] = phase[normrows, ch*32:(ch+1)*32] / np.mean(phase[normrows, ch*32:(ch+1)*32])*ch0mean
+		[phase1,phase2]=self.get_data(index=index)
+		phase = (phase1+phase2)/2
+		# Perform Normalization per channel
+		if normrows==None:
+			normrows = range(ylims[0],ylims[1]) # Normalize over rows that are within the microfluidic
+		ch0mean = np.mean(phase[normrows, xlims[0]:((xlims[0]//32)+1)*32]) # find mean for leftmost channel that is in microfluidic
+		#Handle channels that are not partially covered in 256 pixel direction. 
+		for ch in range(((xlims[0]//32)+1),(xlims[1]//32)):
+			phase[normrows, ch*32:(ch+1)*32] = phase[normrows, ch*32:(ch+1)*32] / np.mean(phase[normrows, ch*32:(ch+1)*32])*ch0mean
+		#Handles leftmost channel, if partially covered. 
+		phase[normrows, xlims[0]:((xlims[0]//32)+1)*32] = phase[normrows,xlims[0]:((xlims[0]//32)+1)*32]/np.mean(phase[normrows,xlims[0]:((xlims[0]//32)+1)*32])*ch0mean
+		#Handles rightmost channel, if partially covered.
+		phase[normrows, (xlims[1]//32)*32:xlims[1]] = phase[normrows,(xlims[1]//32)*32:xlims[1]]/np.mean(phase[normrows, (xlims[1]//32)*32:xlims[1]])*ch0mean
+		# Remove outliers above chosen Nstd
+		phase = np.abs(phase)
+		med=np.median(np.ravel(phase))
+		std=np.std(np.ravel(phase))
+		phase[np.abs(phase-med)>(Nstd*std)] = med
+		vmin=np.mean(phase[normrows,:])-4*np.std(phase[normrows,:])
+		vmax=np.mean(phase[normrows,:])+1*np.std(phase[normrows,:])
+		return phase[ylims[0]:ylims[1],xlims[0]:xlims[1]],vmin,vmax
 
-			#Handle leftmost channel, partially covered. 
-			phase[normrows, self.xlim1:((self.xlim1//32)+1)*32] = phase[normrows,self.xlim1:((self.xlim1//32)+1)*32]/np.mean(phase[normrows,self.xlim1:((self.xlim1//32)+1)*32])*ch0mean
-			#Handle rightmost channel, partially covered.
-			phase[normrows, (self.xlim2//32)*32:self.xlim2] = phase[normrows,(self.xlim2//32)*32:self.xlim2]/np.mean(phase[normrows, (self.xlim2//32)*32:self.xlim2])*ch0mean
-			# Remove outliers above chosen Nstd
-			phase = np.abs(phase)
-			med=np.median(np.ravel(phase))
-			std=np.std(np.ravel(phase))
-			phase[np.abs(phase-med)>(Nstd*std)] = med
-			vmin=np.mean(phase[normrows,:])-4*np.std(phase[normrows,:])
-			vmax=np.mean(phase[normrows,:])+1*np.std(phase[normrows,:])
-			if crop:
-				return phase[self.ylim1:self.ylim2,self.xlim1:self.xlim2],vmin,vmax
-			else:
-				return phase,vmin,vmax
-
+<<<<<<< Updated upstream
 	def make_video(self,index_rng=[0,0],fps=30,cmap='Spectral',figsize=(16,12),step=1,normrows=None):
+=======
+	def make_video(self,fps=30,cmap='Spectral',figsize=(16,12),step=1,xlims=[0,256],ylims=[0,512],normrows=None):
+>>>>>>> Stashed changes
 	    """Returns .gif of Impedance Time Series Data"""
 	    self.frames = []
 	    for i in tqdm(range(index_rng[0],index_rng[1],step),desc="Processing Images"):
 	        fig, ax_main = plt.subplots(figsize=figsize)
-	        image, vmin, vmax = self.process_image(index=i,crop=True,normrows=normrows)
+	        image, vmin, vmax = self.process_image(index=i,xlims=xlims,ylims=ylims,normrows=normrows)
 	        im = ax_main.imshow(np.flip(np.transpose(image),axis=1),vmin=vmin,vmax=vmax,cmap=cmap)
 	        ax_main.axis('off')
 	        fig.canvas.draw();       # draw the canvas, cache the renderer
