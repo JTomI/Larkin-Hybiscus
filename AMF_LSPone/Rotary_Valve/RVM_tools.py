@@ -49,7 +49,7 @@ class RVM(object):
 		print("Homing complete.")
 		self.rvm.close()
 
-	def move(self,valve=None):
+	def move(self,valve=None,delay=1):
 		# Moves to new valve position (1,2,3,4,5,6) in shortest path.
 		# /1 	- command start
 		# b{} 	- move to valve port {} by the shortest path, unless already at that valve.
@@ -62,7 +62,7 @@ class RVM(object):
 			cmd_str = "/1b{}R\r".format(int(valve))
 			self.rvm.write(cmd_str.encode('utf-8'))
 			self.current_valve=valve
-			time.sleep(5)
+			time.sleep(delay)
 			print("Move complete. Current valve = "+str(self.current_valve))
 			self.rvm.close()
 
