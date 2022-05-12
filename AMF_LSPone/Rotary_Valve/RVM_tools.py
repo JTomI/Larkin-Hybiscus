@@ -1,5 +1,5 @@
 """
-RVM_example.py
+RVM_tools.py
 ~~~~~~~~~~~~~~~~~
 This program shows how to connect to to the RVM (OEM rotary valve) using python.
 The different commands can be found in the user manual.
@@ -14,6 +14,7 @@ from serial import Serial
 import time
 
 class RVM(object):
+	'''The RVM class contains a set of supporting functions for interfacing with an Advanced MicroFluidics (AMF) brand, P200 series Rotary Valve (RVM).'''
 	def __init__(self,port='COM3'):
 		self.port=port
 		self.current_valve=0
@@ -25,7 +26,7 @@ class RVM(object):
 		self.rvm.close()
 
 	def cmd(self, msg=''):
-		# Send arbitrary command to RVM. Consult AMF manual for the RVM commands.
+		'''Sends arbitrary command to RVM. Consult AMF manual for the RVM commands.'''
 		# /1 	- command start
 		# {} 	- command body
 		# R 	- command end
@@ -36,13 +37,13 @@ class RVM(object):
 		self.rvm.close()
 
 	def reset(self):
-		#Reset connection
+		'''Resets serial connection with the RVM'''
 		self.rvm = Serial(self.port, 9600, timeout=1000)
 		print("Connection reset on port "+str(self.rvm.name))
 		self.rvm.close()
 
 	def rehome(self):
-		#Perform rehoming of RVM
+		'''Performs rehoming of RVM'''
 		self.rvm.open()
 		self.rvm.write(b"/1ZR\r")
 		time.sleep(5)
@@ -50,11 +51,10 @@ class RVM(object):
 		self.rvm.close()
 
 	def move(self,valve=None,delay=1):
-		# Moves to new valve position (1,2,3,4,5,6) in shortest path.
-		# /1 	- command start
-		# b{} 	- move to valve port {} by the shortest path, unless already at that valve.
-		# R 	- command end
-		# \r    - carriage return caracter
+		'''Moves to new valve position (1,2,3,4,5,6) in shortest path.'''
+		#/1 	- command start
+		#b{} - move to valve port {} by the shortest path, unless already at that valve.
+		#R 	- command end, followed by carriage return caracter
 		if valve == None:
 			print("No valve (1,2,3,4,5,6) selected")
 		else:
