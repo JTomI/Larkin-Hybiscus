@@ -1,14 +1,11 @@
 """
 RVM_tools.py
 ~~~~~~~~~~~~~~~~~
-This program shows how to connect to to the RVM (OEM rotary valve) using python.
-The different commands can be found in the user manual.
+Contains class for handling RVM control. 
 
-:copyright: (c) 2017, E. Collot
-:license: Proprietary, see LICENSE for details.
+Joey Incandela - 05/23/2022
 
 """
-#include python libraries
 import sys
 from serial import Serial
 import time
