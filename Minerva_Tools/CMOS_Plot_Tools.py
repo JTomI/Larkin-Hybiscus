@@ -97,12 +97,12 @@ class CPT(object):
 		else:
 			return phase,vmin,vmax
 
-	def make_video(self,index_rng=[0,0],fps=30,cmap='Spectral',figsize=(16,12),step=1):
+	def make_video(self,index_rng=[0,0],fps=30,cmap='Spectral',crop=True,figsize=(16,12),step=1,xlims=[0,256],ylims=[0,512]):
 	    """Returns .gif of Impedance Time Series Data"""
 	    self.frames = []
 	    for i in tqdm(range(index_rng[0],index_rng[1],step),desc="Processing Images"):
 	        fig, ax_main = plt.subplots(figsize=figsize)
-	        image, vmin, vmax = self.process_image(index=i,crop=True,normrows=self.normrows)
+	        image, vmin, vmax = self.process_image(index=i,crop=crop,xlims=xlims,ylims=ylims)
 	        im = ax_main.imshow(np.flip(np.transpose(image),axis=1),vmin=vmin,vmax=vmax,cmap=cmap)
 	        ax_main.axis('off')
 	        fig.canvas.draw();       # draw the canvas, cache the renderer
