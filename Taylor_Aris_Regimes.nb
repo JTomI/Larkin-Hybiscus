@@ -1,0 +1,102 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 12.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      3162,         94]
+NotebookOptionsPosition[      2789,         80]
+NotebookOutlinePosition[      3209,         96]
+CellTagsIndexPosition[      3166,         93]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"ClearAll", "[", "\"\<Global`*\>\"", "]"}], ";"}], 
+  "\[IndentingNewLine]", 
+  RowBox[{"(*", 
+   RowBox[{
+   "Calculations", " ", "based", " ", "off", " ", "of", " ", "Bae", " ", "et",
+     " ", 
+    RowBox[{"al", ".", " ", "2009"}]}], "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"h", "=", 
+    RowBox[{"6", "*", 
+     SuperscriptBox["10", 
+      RowBox[{"-", "6"}]]}]}], ";", " ", 
+   RowBox[{"(*", 
+    RowBox[{"Microfluidic", " ", "Channel", " ", "Height", " ", 
+     RowBox[{"in", " ", "[", "m", "]"}]}], "*)"}], "\[IndentingNewLine]", 
+   RowBox[{"w", "=", 
+    RowBox[{"3", "*", 
+     SuperscriptBox["10", 
+      RowBox[{"-", "3"}]]}]}], ";", 
+   RowBox[{"(*", 
+    RowBox[{"Microfluidic", " ", "Channel", " ", "Width", " ", 
+     RowBox[{"in", " ", "[", "m", "]"}]}], "*)"}], "\[IndentingNewLine]", 
+   RowBox[{"l", "=", " ", 
+    RowBox[{"3", "*", 
+     SuperscriptBox["10", 
+      RowBox[{"-", "3"}]]}]}], ";"}], 
+  RowBox[{"(*", 
+   RowBox[{"Microfluidic", " ", "Channel", " ", "Length", " ", 
+    RowBox[{"in", " ", "[", "m", "]"}]}], "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"u", " ", "="}], " ", ";", " ", 
+   RowBox[{"(*", 
+    RowBox[{
+     RowBox[{"Nominal", " ", "flow", " ", "velocity", " ", "at", " ", "t"}], 
+     "=", "0"}], "*)"}], "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"Keff", "[", 
+     RowBox[{"D0_", ",", "ubar_", ",", "d_"}], "]"}], "=", 
+    RowBox[{"D0", "+", 
+     RowBox[{
+      FractionBox["1", "210"], "*", 
+      FractionBox[
+       RowBox[{
+        SuperscriptBox["d", "2"], "*", 
+        SuperscriptBox["ubar", "2"]}], "D0"]}]}]}], ";"}], " ", 
+  RowBox[{"(*", "*)"}]}], "\[IndentingNewLine]"}], "Input",
+ CellChangeTimes->{{3.882027476267014*^9, 3.8820275166854053`*^9}, {
+  3.882274468989729*^9, 3.8822744693164544`*^9}, {3.8822745123836966`*^9, 
+  3.8822746680183277`*^9}, {3.88227500195934*^9, 3.8822750380216284`*^9}, {
+  3.882275080872714*^9, 3.882275094116673*^9}, {3.882275135963394*^9, 
+  3.8822752310431986`*^9}, {3.8822832932962894`*^9, 3.8822833604612083`*^9}, {
+  3.8822837736141987`*^9, 
+  3.8822837767503567`*^9}},ExpressionUUID->"06f2ff47-f030-4a5d-ba20-\
+0a44aefb4c51"]
+},
+WindowSize->{571.8, 524.4},
+WindowMargins->{{Automatic, 30.600000000000136`}, {Automatic, 17.4}},
+FrontEndVersion->"12.3 for Microsoft Windows (64-bit) (July 9, 2021)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"1f15cfd1-837a-47ac-b52f-76b684711c1b"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 2227, 58, 184, "Input",ExpressionUUID->"06f2ff47-f030-4a5d-ba20-0a44aefb4c51"]
+}
+]
+*)
+
