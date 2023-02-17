@@ -20,10 +20,14 @@ class MinervaManager(object):
 		self.logdir = logdir
 		self.logfiles = glob.glob(logdir+'*{}*.h5'.format(dtype))
 		self.filterstring = self.filters[dtype]
-
 		print('Logfile Directory: ',logdir)
-		print('({}) Logfiles of *{}* datatype:'.format(len(self.logfiles),self.filters[dtype]))
-		print(self.logfiles)
+		print(' -- ({}) Logfiles of *{}* datatype -- '.format(len(self.logfiles),self.filters[dtype]))
+		print('')
+		for filename in self.logfiles:
+			imp_list = self.get_list(filename)
+			print('Filename: ',os.path.basename(filename))
+			print('# images: ',len(imp_list))
+			print('')
 
 	def get_data(self,filename=None, exp_name=None, dataname='image'):
 		'''Searches for a dataset (exp_name) stored in a Minerva Logfile (filename).
