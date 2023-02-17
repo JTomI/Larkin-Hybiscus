@@ -25,8 +25,44 @@ def remove_outliers(image=None,Nstd=5):
 	image[np.abs(image-med)>(Nstd*std)] = med
 	return image
 
-def imp_plot(manager=None,normrows=None,vrange=[-4,1],mycolormap='Blues',Nstd=5,verbose=True):
-	'''Plots pH timelapse from Minerva Logfile.'''
+def plot_single(data=None,data_name=None,tx=None,t0=None,vrange=[-4,1],normrows=[0,512],colormap='Blues',verbose=True):
+    fig = plt.figure(figsize=(12,6))
+    grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
+    ax_main = fig.add_subplot(grid[:, :])
+    im1 = ax_main.imshow(np.flip(np.transpose(data),axis=1), #-np.median(image_1)), # [50:100,:40]),
+    vmin=np.mean(data[normrows,:])+vrange[0]*np.std(data[normrows,:]), 
+    vmax=np.mean(data[normrows,:])+vrange[1]*np.std(data[normrows,:]), 
+    cmap=colormap)
+    fig.colorbar(im1,ax=ax_main)
+    ax_main.set_title(str(data_name)+ ' time elapsed ' + str(tx-t0))
+    fig.canvas.draw()       # draw the canvas, cache the renderer
+    im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+    im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    if verbose:
+        plt.show()
+    plt.close(fig)
+    return im
+
+def save_animation(manager,savename,data=None,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
+    normrows=range(normrows[0],normrows[1])
+    t0 = data_times[0]
+    frames=[]
+    for i in tqdm(range(len(data)), desc='Plotting'):
+        im=plot_single(data=data[i],data_name=data_names[i],tx=data_times[i],t0=data_times[0],vrange=vrange,normrows=normrows,colormap='Blues',verbose=verbose)
+        frames.append(im)
+    print(' -- Saving plots as .gif animation -- ')
+    plotdir = os.path.join(manager.logdir,'plots')
+    if(not os.path.exists(plotdir)):
+        os.mkdir(plotdir)
+    filename=os.path.join(plotdir,savename.replace('.h5','.gif'))
+    imageio.mimsave(filename,frames, fps=fps)
+    print(' --  Animation saved as {}  -- '.format(filename))
+    return 1
+
+def imp_plot(manager=None,normrows=None,vrange=[-4,1],mycolormap='Blues',Nstd=5,verbose=True,fps=10):
+	'''Plots impedance timelapse from Minerva Logfiles.'''
+
+	ph1,ph2 = manager.get_data_stack()
 	if normrows==None:
 		normrows = range(200,300)
 	for lognum,logname in enumerate(manager.logfiles):
@@ -74,7 +110,6 @@ def imp_plot(manager=None,normrows=None,vrange=[-4,1],mycolormap='Blues',Nstd=5,
 				# re-normalize again
 				image_2d_ph1 = normalize_by_channel(image=image_2d_ph1,normrows=normrows)
 				image_2d_ph2 = normalize_by_channel(image=image_2d_ph2,normrows=normrows)    
-
 				image_1 = image_2d_ph2
 				if image_1_ref is None:
 					image_1_ref = image_1
@@ -91,21 +126,20 @@ def imp_plot(manager=None,normrows=None,vrange=[-4,1],mycolormap='Blues',Nstd=5,
 				ax_main.set_title(str(lognum) + '   ' + str(i) + '   ' + list_all[i] + ' time elapsed ' + str(tx-t0))
 				if verbose:
 					plt.show()
-
 				# add to frames for animation
 				fig.canvas.draw()       # draw the canvas, cache the renderer
 				im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
 				im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 				myframes.append(im)
 				plt.close(fig)
-	#Save all frames
-	print(' -- Saving plots as .gif animation -- ')
-	plotdir = os.path.join(manager.logdir,'plots')
-	if(not os.path.exists(plotdir)):
-	    os.mkdir(plotdir)
-	savename=os.path.join(plotdir,os.path.basename(logname).replace('.h5','.gif'))
-	imageio.mimsave(savename,myframes, fps=10)
-	print(' --  Animation saved as {}  -- '.format(savename))
+		#Save all frames
+		print(' -- Saving plots as .gif animation -- ')
+		plotdir = os.path.join(manager.logdir,'plots')
+		if(not os.path.exists(plotdir)):
+		    os.mkdir(plotdir)
+		savename=os.path.join(plotdir,os.path.basename(logname).replace('.h5','.gif'))
+		imageio.mimsave(savename,myframes, fps=fps)
+		print(' --  Animation saved as {}  -- '.format(savename))
 	return 1 
 
 def misc():
