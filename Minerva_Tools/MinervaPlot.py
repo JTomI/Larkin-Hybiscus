@@ -8,7 +8,9 @@ from datetime import datetime
 from itertools import chain
 import imageio
 from tqdm import tqdm
+from PIL import Image
 from MinervaManager import MinervaManager as MM
+
 
 def normalize_by_channel(image=None,normrows=None):
     '''Normalize by channel'''
@@ -25,14 +27,11 @@ def remove_outliers(image=None,Nstd=5):
 	image[np.abs(image-med)>(Nstd*std)] = med
 	return image
 
-def plot_single(data=None,data_name=None,tx=None,t0=None,vrange=[-4,1],normrows=[0,512],colormap='Blues',verbose=True):
+def plot_single(data=None,data_name=None,tx=None,t0=None,colormap='Blues',verbose=True,vmin=None,vmax=None):
     fig = plt.figure(figsize=(12,6))
     grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
     ax_main = fig.add_subplot(grid[:, :])
-    im1 = ax_main.imshow(np.flip(np.transpose(data),axis=1), #-np.median(image_1)), # [50:100,:40]),
-    vmin=np.mean(data[normrows,:])+vrange[0]*np.std(data[normrows,:]), 
-    vmax=np.mean(data[normrows,:])+vrange[1]*np.std(data[normrows,:]), 
-    cmap=colormap)
+    im1 = ax_main.imshow(data, vmin=vmin, vmax=vmax, cmap=colormap)
     fig.colorbar(im1,ax=ax_main)
     ax_main.set_title(str(data_name)+ ' time elapsed ' + str(tx-t0))
     fig.canvas.draw()       # draw the canvas, cache the renderer
