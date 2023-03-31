@@ -27,11 +27,11 @@ def remove_outliers(image=None,Nstd=5):
 	image[np.abs(image-med)>(Nstd*std)] = med
 	return image
 
-def plot_single(data=None,data_name=None,tx=None,t0=None,colormap='Blues',verbose=True,vmin=None,vmax=None):
+def plot_single(data=None,data_name=None,tx=None,t0=None,colormap='Blues',verbose=True,vrange=[-4,1]):
     fig = plt.figure(figsize=(12,6))
     grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
     ax_main = fig.add_subplot(grid[:, :])
-    im1 = ax_main.imshow(data, vmin=vmin, vmax=vmax, cmap=colormap)
+    im1 = ax_main.imshow(data, vmin=vrange[0], vmax=vrange[1], cmap=colormap)
     fig.colorbar(im1,ax=ax_main)
     ax_main.set_title(str(data_name)+ ' time elapsed ' + str(tx-t0))
     fig.canvas.draw()       # draw the canvas, cache the renderer
@@ -42,7 +42,7 @@ def plot_single(data=None,data_name=None,tx=None,t0=None,colormap='Blues',verbos
     plt.close(fig)
     return im
 
-def save_animation(manager,savename,data=None,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
+def save_animation(manager,savename,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
     normrows=range(normrows[0],normrows[1])
     t0 = data_times[0]
     frames=[]
@@ -61,7 +61,7 @@ def save_animation(manager,savename,data=None,data_times=None,data_names=None,vr
 def imp_plot(manager=None,normrows=None,vrange=[-4,1],mycolormap='Blues',Nstd=5,verbose=True,fps=10):
 	'''Plots impedance timelapse from Minerva Logfiles.'''
 
-	ph1,ph2 = manager.get_data_stack()
+	ph1,ph2,times,names = manager.get_data_stack()
 	if normrows==None:
 		normrows = range(200,300)
 	for lognum,logname in enumerate(manager.logfiles):
