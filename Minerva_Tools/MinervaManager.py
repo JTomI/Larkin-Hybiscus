@@ -47,17 +47,17 @@ class MinervaManager(object):
 		grp_data = hf.get(exp_name)
 		image_2d_ph1 = grp_data['image_2d_ph1'][:]
 		image_2d_ph2 = grp_data['image_2d_ph2'][:]
-		V_SW = self.get_attr(filename,exp_name,'V_SW')
-		V_CM = self.get_attr(filename,exp_name,'V_CM')
-		f_sw = self.get_attr(filename,exp_name,'f_sw')
-		T_int = self.get_attr(filename,exp_name,'T_int')
-		C_int = self.get_attr(filename,exp_name,'C_int')
-		if (not self.dtype == 'ph'):
-			gain_swcap = np.abs(V_SW-V_CM)*1e-3*f_sw  # Iout/Cin
-			gain_integrator = T_int/C_int  # Vout/Iin
-			gain_overall = gain_swcap*gain_integrator
-			image_2d_ph1 = image_2d_ph1 / gain_overall
-			image_2d_ph2 = image_2d_ph2 / gain_overall
+		# V_SW = self.get_attr(filename,exp_name,'V_SW')
+		# V_CM = self.get_attr(filename,exp_name,'V_CM')
+		# f_sw = self.get_attr(filename,exp_name,'f_sw')
+		# T_int = self.get_attr(filename,exp_name,'T_int')
+		# C_int = self.get_attr(filename,exp_name,'C_int')
+		# if (not self.dtype == 'ph'):
+		# 	gain_swcap = np.abs(V_SW-V_CM)*1e-3*f_sw  # Iout/Cin
+		# 	gain_integrator = T_int/C_int  # Vout/Iin
+		# 	gain_overall = gain_swcap*gain_integrator
+		# 	image_2d_ph1 = image_2d_ph1 / gain_overall
+		# 	image_2d_ph2 = image_2d_ph2 / gain_overall
 		return image_2d_ph1 , image_2d_ph2
 
 	def all_attr(self,filename=None, exp_name=None):

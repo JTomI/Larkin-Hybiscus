@@ -1,4 +1,5 @@
 import h5py
+from matplotlib import font_manager
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
@@ -25,7 +26,7 @@ def rm_banding(image=None):
 	band_mask = np.ones_like(image)
 	axislen = len(band_mask[:,0])
 	for i in range(axislen):
-			band_mask[i,:]=rowaverage
+		band_mask[i,:]=rowaverage
 	rescaled=image-band_mask
 	# Add back in original frame average to preserve mean
 	rescaled+=fullframeaverage
@@ -146,7 +147,11 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 								vmin=np.mean(final_image[normrows,:])+vrange[0]*np.std(final_image[normrows,:]), 
 								vmax=np.mean(final_image[normrows,:])+vrange[1]*np.std(final_image[normrows,:]), 
 								cmap=mycolormap)
-			fig.colorbar(im1,ax=ax_main)
+			cb=fig.colorbar(im1,ax=ax_main,label='Capacitance [Farads]')
+			axcb = cb.ax
+			text = axcb.yaxis.label
+			font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
+			text.set_font_properties(font)
 			ax_main.set_title(str(lognum) + '   ' + str(i) + '   ' + list_all[i] + ' time elapsed ' + str(tx-t0))
 			if verbose:
 				plt.show()
@@ -165,6 +170,3 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 		imageio.mimsave(savename,myframes, fps=fps)
 		print(' --  Animation saved as {}  -- '.format(savename))
 	return 1 
-
-def misc():
-	pass
