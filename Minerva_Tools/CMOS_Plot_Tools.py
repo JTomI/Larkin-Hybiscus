@@ -98,18 +98,18 @@ class CPT(object):
 			return phase,vmin,vmax
 
 	def make_video(self,index_rng=[0,0],fps=30,cmap='Spectral',crop=True,Nstd=5,figsize=(16,12),step=1,xlims=[0,256],ylims=[0,512]):
-	    """Returns .gif of Impedance Time Series Data"""
-	    self.frames = []
-	    for i in tqdm(range(index_rng[0],index_rng[1],step),desc="Processing Images"):
-	        fig, ax_main = plt.subplots(figsize=figsize)
-	        image, vmin, vmax = self.process_image(index=i,crop=crop,xlims=xlims,ylims=ylims,Nstd=Nstd)
-	        im = ax_main.imshow(np.flip(np.transpose(image),axis=1),vmin=vmin,vmax=vmax,cmap=cmap)
-	        ax_main.axis('off')
-	        fig.canvas.draw();       # draw the canvas, cache the renderer
-	        im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-	        im = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-	        self.frames.append(im)
-	        plt.close('all')
-	    print("Saving...")
-	    imageio.mimsave(self.path.replace(".h5",".gif"), self.frames, fps=fps)
-	    print("Saved to", self.path.replace(".h5",".gif"))
+		 """Returns .gif of Impedance Time Series Data"""
+		 self.frames = []
+		 for i in tqdm(range(index_rng[0],index_rng[1],step),desc="Processing Images"):
+			  fig, ax_main = plt.subplots(figsize=figsize)
+			  image, vmin, vmax = self.process_image(index=i,crop=crop,xlims=xlims,ylims=ylims,Nstd=Nstd)
+			  im = ax_main.imshow(np.flip(np.transpose(image),axis=1),vmin=vmin,vmax=vmax,cmap=cmap)
+			  ax_main.axis('off')
+			  fig.canvas.draw();		 # draw the canvas, cache the renderer
+			  im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+			  im = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+			  self.frames.append(im)
+			  plt.close('all')
+		 print("Saving...")
+		 imageio.mimsave(self.path.replace(".h5",".gif"), self.frames, fps=fps)
+		 print("Saved to", self.path.replace(".h5",".gif"))

@@ -11,7 +11,7 @@ import imageio
 from tqdm import tqdm
 
 class MinervaManager(object):
-	'''Manager class with methods for importing and basic handling of data/metadata in Minerva generated .h5 logfiles.'''
+	'''Manager class mLwith methods for importing and basic handling of data/metadata in Minerva generated .h5 logfiles.'''
 	def __init__(self,dtype='imp',logdir=None):
 		'''Manager is initialized to handle all logfiles sharing one minerva datatype (dtype), that exist in directory at absolute path (logdir). 
 		Compatible dtype values are imp (Impedance), ect (Electrical Capacitance Tomography), ph (pH)'''
@@ -23,18 +23,42 @@ class MinervaManager(object):
 		print('Logfile Directory: ',logdir)
 		print(' -- ({}) Logfiles of *{}* datatype -- '.format(len(self.logfiles),self.filters[dtype]))
 		print('')
+		self.logfile_explists = []
 		for filename in self.logfiles:
-			imp_list = self.get_list(filename)
+			explist = self.get_list(filename)
 			print('Filename: ',os.path.basename(filename))
-			print('# images: ',len(imp_list))
+			print('# images: ',len(explist))
+			#Save all experiment names in a separate list for each logfile
+			self.logfile_explists.append(explist)
 
-	def get_data(self,filename=None, exp_name=None, dataname='image'):
+	def get_raw_data(self,filename=None, exp_name=None, dataname='image'):
 		'''Searches for a dataset (exp_name) stored in a Minerva Logfile (filename).
 		Returns the image data (dataname) of the dataset as a 2D numpy array.'''
 		hf = h5py.File(filename, 'r')
 		grp_data = hf.get(exp_name)
 		image = grp_data[dataname][:]
 		return image
+
+	def get_data(self,filename=None, exp_name=None):
+		'''Searches for a dataset (exp_name) stored in a Minerva Logfile (filename).
+		Returns the image data (dataname) of the dataset as a 2D numpy array.
+		Data preprocessed to apply overall gain to image'''
+		hf = h5py.File(filename, 'r')
+		grp_data = hf.get(exp_name)
+		image_2d_ph1 = grp_data['image_2d_ph1'][:]
+		image_2d_ph2 = grp_data['image_2d_ph2'][:]
+		V_SW = self.get_attr(filename,exp_name,'V_SW')
+		V_CM = self.get_attr(filename,exp_name,'V_CM')
+		f_sw = self.get_attr(filename,exp_name,'f_sw')
+		T_int = self.get_attr(filename,exp_name,'T_int')
+		C_int = self.get_attr(filename,exp_name,'C_int')
+		if (not self.dtype == 'ph'):
+			gain_swcap = np.abs(V_SW-V_CM)*1e-3*f_sw  # Iout/Cin
+			gain_integrator = T_int/C_int  # Vout/Iin
+			gain_overall = gain_swcap*gain_integrator
+			image_2d_ph1 = image_2d_ph1 / gain_overall
+			image_2d_ph2 = image_2d_ph2 / gain_overall
+		return image_2d_ph1 , image_2d_ph2
 
 	def all_attr(self,filename=None, exp_name=None):
 		'''Searches for a dataset (exp_name) stored in a Minerva Logfile (filename). 
@@ -83,20 +107,7 @@ class MinervaManager(object):
 			list_all = self.get_list(fullname,filterstring=self.filterstring,sortby='time')
 			for i in tqdm(range(len(list_all)),
 			 desc=' --  Importing {} data from {}  -- '.format(self.filterstring,os.path.basename(logname))):
-				V_SW = self.get_attr(fullname,list_all[i],'V_SW')
-				V_CM = self.get_attr(fullname,list_all[i],'V_CM')
-				f_sw = self.get_attr(fullname,list_all[i],'f_sw')
-				T_int = self.get_attr(fullname,list_all[i],'T_int')
-				C_int = self.get_attr(fullname,list_all[i],'C_int')
-				if (not self.dtype == 'ph'):
-					gain_swcap = np.abs(V_SW-V_CM)*1e-3*f_sw  # Iout/Cin
-					gain_integrator = T_int/C_int  # Vout/Iin
-					gain_overall = gain_swcap*gain_integrator
-				image_2d_ph1 = self.get_data(fullname,list_all[i],dataname='image_2d_ph1')
-				image_2d_ph2 = self.get_data(fullname,list_all[i],dataname='image_2d_ph2')
-				if (not self.dtype == 'ph'):
-					image_2d_ph1 = image_2d_ph1 / gain_overall
-					image_2d_ph2 = image_2d_ph2 / gain_overall
+				image_2d_ph1,image_2d_ph2 = self.get_data(fullname,list_all[i])
 				frames_ph1.append(image_2d_ph1)
 				frames_ph2.append(image_2d_ph2)
 				timestamps.append(self.get_time(fullname,list_all[i]))
@@ -107,4 +118,22 @@ class MinervaManager(object):
 
 
 if __name__ == '__main__':
-	pass
+	# Example usage, fetching impedance data
+	impdir = r"C:\Users\jtincan\Desktop\F0386_Analysis\F0386_minerva\impedance/"
+	iM = MinervaManager(dtype='imp',logdir=impdir);
+	# Logfile Directory:  C:\Users\jtincan\Desktop\F0386_Analysis\F0386_minerva\impedance/
+	# -- (2) Logfiles of *impedance* datatype -- 
+
+	# Filename:  F0386_imp_p1.h5
+	# # images:  18
+	# Filename:  F0386_imp_p2.h5
+	# # images:  1800
+
+	#Get first .h5 log file
+	logname = iM.logfiles[0]
+	#Get full filepath
+	filename = os.path.join(iM.logdir,logname)
+	#Get capture/'experiment' list of first logfile 
+	datalist = iM.logfile_explists[0]
+	#Fetch pair of impedance images from first timepoint of the first log file
+	image_2d_ph1,image_2d_ph2 = iM.get_data(filename,datalist[0])
