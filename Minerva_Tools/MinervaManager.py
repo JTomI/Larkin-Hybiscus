@@ -93,7 +93,7 @@ class MinervaManager(object):
 			grp_list = sorted(grp_list,key=lambda x: self.get_time(filename,x))
 		return grp_list
 
-	def get_data_stack(self):
+	def get_data_stack(self,imrange=None):
 		'''Returns 4 time ordered lists of ph, ect, or impedance data,
 		 with one list for each collected phase, one list of timestamps and one list of frame names.
 		Function iterates over each logfile in the directory and compiles 
@@ -105,7 +105,9 @@ class MinervaManager(object):
 		for lognum,logname in enumerate(self.logfiles):
 			fullname = os.path.join(self.logdir,logname)
 			list_all = self.get_list(fullname,filterstring=self.filterstring,sortby='time')
-			for i in tqdm(range(len(list_all)),
+			if imrange==None:
+				imrange=[0,len(list_all)]
+			for i in tqdm(range(imrange[0],imrange[1]),
 			 desc=' --  Importing {} data from {}  -- '.format(self.filterstring,os.path.basename(logname))):
 				image_2d_ph1,image_2d_ph2 = self.get_data(fullname,list_all[i])
 				frames_ph1.append(image_2d_ph1)
