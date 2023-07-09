@@ -15,24 +15,22 @@ from PIL import Image, ImageOps
 from MinervaManager import MinervaManager as MM
 import time
 
-def rm_banding(image=None):
+def rm_banding(image=None,normrows=[0,511]):
 	'''Removes banding artifact from channel readout, while preserving mean pixel value in image. 
 	Should be used after get_data function before other processing'''
 	# Record the full frame average of the image before removal
-	fullframeaverage=np.mean(image)
+	fullframeaverage=np.mean(image[normrows[0]:normrows[1],:])
 	# Get the profile of the banding
-	rowaverage=np.mean(image,axis=0)
+	rowaverage=np.mean(image[normrows[0]:normrows[1],:],axis=0)
 	# Make mask of banding and subract it off of image
-	band_mask = np.ones_like(image)
+	band_mask = np.ones_like(image[normrows[0]:normrows[1],:])
 	axislen = len(band_mask[:,0])
 	for i in range(axislen):
 		band_mask[i,:]=rowaverage
-	rescaled=image-band_mask
+	image[normrows[0]:normrows[1],:]-=band_mask
 	# Add back in original frame average to preserve mean
-	rescaled+=fullframeaverage
-	# if fullframeaverage!=np.mean(blank):
-	# 	print('Banding Removal Changed mean')
-	return rescaled
+	image[normrows[0]:normrows[1],:]+=fullframeaverage
+	return image
 
 def normalize_by_channel(image=None,normrows=None):
 	'''Normalize by channel'''
@@ -85,9 +83,10 @@ def save_animation(manager,savename,data_times=None,data_names=None,vrange=[-4,1
 	return 1
 
 def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap='Blues',Nstd=5,verbose=True,fps=10,deltas=False,pltall=True):
-	'''Plots impedance timelapse from Minerva Logfiles. If there are multiple logfiles, combines both timelapses and time orders them.'''
+	'''Plots impedance timelapse as .gif video generated from Minerva .h5 Logfiles. If there are multiple logfiles in designated folder,
+	 combines all timelapses and time orders them.'''
 	# ph1,ph2,times,names = manager.get_data_stack(imrange=imrange)
-	time.sleep(0.2)
+	# time.sleep(0.2)
 	myframes=[]
 	image_1_ref = None
 	image_2_ref = None
