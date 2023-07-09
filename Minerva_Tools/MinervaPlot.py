@@ -84,10 +84,14 @@ def save_animation(manager,savename,data_times=None,data_names=None,vrange=[-4,1
 	print(' --  Animation saved as {}  -- '.format(filename))
 	return 1
 
-def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap='Blues',Nstd=5,verbose=True,fps=10,deltas=False):
-	'''Plots impedance timelapse from Minerva Logfiles.'''
-	ph1,ph2,times,names = manager.get_data_stack(imrange=imrange)
+def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap='Blues',Nstd=5,verbose=True,fps=10,deltas=False,pltall=True):
+	'''Plots impedance timelapse from Minerva Logfiles. If there are multiple logfiles, combines both timelapses and time orders them.'''
+	# ph1,ph2,times,names = manager.get_data_stack(imrange=imrange)
 	time.sleep(0.2)
+	myframes=[]
+	image_1_ref = None
+	image_2_ref = None
+	t0 = None
 	for lognum,logname in enumerate(manager.logfiles):
 		fullname = os.path.join(manager.logdir,logname) 
 		list_all = manager.get_list(fullname,sortby='time')
@@ -95,10 +99,8 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 		if verbose:
 			print('\n\nall\n\n',list_all)
 			print('\n\nimpedance\n\n',list_impedance)
-		t0 = manager.get_time(fullname,list_impedance[0])
-		image_1_ref = None
-		image_2_ref = None
-		myframes=[]
+		if t0==None:
+			t0 = manager.get_time(fullname,list_impedance[0])
 		if imrange==None:
 			imrange=[0,len(list_impedance)]
 		else:
@@ -108,7 +110,11 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 			if imrange[0]<0:
 				print('Frame index out of range')
 				break
-		for i in tqdm(range(imrange[0],imrange[1],1),
+		if pltall:
+			imprange = range(len(list_impedance))
+		else:
+			imprange = range(imrange[0],imrange[1],1)
+		for i in tqdm(imprange,
 			desc ='...Generating all impedance images from logfile {}'.format(os.path.basename(logname))):
 			image_2d_ph1,image_2d_ph2 = manager.get_data(fullname,list_impedance[i])
 			image_2d_ph1 = rm_banding(image_2d_ph1)
@@ -161,12 +167,12 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 			myframes.append(im)
 			plt.close(fig)
-		#Save all frames
-		print(' -- Saving plots as .gif animation -- ')
-		plotdir = os.path.join(manager.logdir,'plots')
-		if(not os.path.exists(plotdir)):
-			os.mkdir(plotdir)
-		savename=os.path.join(plotdir,os.path.basename(logname).replace('.h5','.gif'))
-		imageio.mimsave(savename,myframes, fps=fps)
-		print(' --  Animation saved as {}  -- '.format(savename))
+	#Save all frames
+	print(' -- Saving plots as .gif animation -- ')
+	plotdir = os.path.join(manager.logdir,'plots')
+	if(not os.path.exists(plotdir)):
+		os.mkdir(plotdir)
+	savename=os.path.join(plotdir,os.path.basename(logname).replace('.h5','.gif'))
+	imageio.mimsave(savename,myframes, fps=fps)
+	print(' --  Animation saved as {}  -- '.format(savename))
 	return 1 
