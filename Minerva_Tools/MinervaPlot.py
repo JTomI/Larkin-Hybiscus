@@ -42,9 +42,16 @@ def normalize_by_channel(image=None,normrows=None):
 
 def remove_outliers(image=None,Nstd=5):
 	'''Remove outlies'''
-	med=np.median(np.ravel(image))
+	med=np.mean(np.ravel(image))
 	std=np.std(np.ravel(image))
 	image[np.abs(image-med)>(Nstd*std)] = med
+	return image
+
+def vrange_crop(image=None, vrange=[-4,1]):
+	med=np.mean(np.ravel(image))
+	std=np.std(np.ravel(image))
+	image[(image-med)<=(vrange[0]*std)] = vrange[0]*std
+	image[(image-med)>=(vrange[1]*std)] = vrange[1]*std
 	return image
 
 def plot_single(data=None,data_name='',tx=0,t0=0,colormap='Blues',verbose=True,vmin=None,vmax=None,vrange=[-4,1],normrows=None):
@@ -55,9 +62,9 @@ def plot_single(data=None,data_name='',tx=0,t0=0,colormap='Blues',verbose=True,v
 	if (vmin==None and vmax==None):
 		vmin=np.mean(data[normrows,:])+vrange[0]*np.std(data[normrows,:])
 		vmax=np.mean(data[normrows,:])+vrange[1]*np.std(data[normrows,:])
-	im1 = ax_main.imshow(np.flip(np.transpose(data)), vmin=vmin, vmax=vmax, cmap=colormap)
+	im1 = ax_main.imshow(data, vmin=vmin, vmax=vmax, cmap=colormap)
 	fig.colorbar(im1,ax=ax_main)
-	ax_main.set_title(str(data_name)+ ' time elapsed ' + str(tx-t0))
+	# ax_main.set_title(str(data_name)+ ' time elapsed ' + str(tx-t0))
 	fig.canvas.draw()	   # draw the canvas, cache the renderer
 	im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
 	im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
@@ -175,3 +182,17 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 	imageio.mimsave(savename,myframes, fps=fps)
 	print(' --  Animation saved as {}  -- '.format(savename))
 	return 1 
+
+
+def get_hist(data=None,bins=256,figsize=(12,8)):
+	counts,bins=np.histogram(data, bins=bins);
+	plt.figure(figsize=figsize);
+	plt.title('Extracting vmin/vmax to set contrast');
+	plt.hist(bins[:-1], bins, weights=counts,label='Counts');
+	places = np.where(counts>1);
+	vmin_i,vmax_i= np.min(places),np.max(places);
+	plt.hist( [bins[:-1][vmin_i],bins[:-1][vmax_i]], bins, weights=[np.max(counts),np.max(counts)],label='Histogram Edges');
+	plt.legend();
+	(vmin,vmax) = (bins[:-1][vmin_i],bins[:-1][vmax_i])
+	print('(vmin,vmax)=',(vmin,vmax));
+	return vmin,vmax
