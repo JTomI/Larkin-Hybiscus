@@ -89,7 +89,7 @@ def save_animation(manager,savename,data_times=None,data_names=None,vrange=[-4,1
 	print(' --  Animation saved as {}  -- '.format(filename))
 	return 1
 
-def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap='Blues',Nstd=5,verbose=True,fps=10,deltas=False,pltall=True):
+def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],vmin=None,vmax=None,mycolormap='Blues',Nstd=5,verbose=True,fps=10,deltas=False,pltall=True):
 	'''Plots impedance timelapse as .gif video generated from Minerva .h5 Logfiles. If there are multiple logfiles in designated folder,
 	 combines all timelapses and time orders them.'''
 	# ph1,ph2,times,names = manager.get_data_stack(imrange=imrange)
@@ -155,16 +155,18 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 			fig = plt.figure(figsize=(12,6))
 			grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
 			ax_main = fig.add_subplot(grid[:, :])
-			im1 = ax_main.imshow(np.flip(np.transpose(final_image)), #-np.median(image_1)), # [50:100,:40]),
-								vmin=np.mean(final_image[normrows,:])+vrange[0]*np.std(final_image[normrows,:]), 
-								vmax=np.mean(final_image[normrows,:])+vrange[1]*np.std(final_image[normrows,:]), 
-								cmap=mycolormap)
+			if vmin==None:
+				vmin=np.mean(final_image[normrows,:])+vrange[0]*np.std(final_image[normrows,:])
+			if vmax==None:
+				vmax=np.mean(final_image[normrows,:])+vrange[1]*np.std(final_image[normrows,:])
+			im1 = ax_main.imshow(np.flip(final_image),vmin=vmin,vmax=vmax, cmap=mycolormap)
 			cb=fig.colorbar(im1,ax=ax_main,label='Capacitance [Farads]')
 			axcb = cb.ax
 			text = axcb.yaxis.label
 			font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
 			text.set_font_properties(font)
-			ax_main.set_title(str(lognum) + '   ' + str(i) + '   ' + list_all[i] + ' time elapsed ' + str(tx-t0))
+			# ax_main.set_title(str(lognum) + '   ' + str(i) + '   ' + list_all[i] + ' time elapsed ' + str(tx-t0))
+			ax_main.set_title('Fr#:' + str(i) + ' , ' + ' Time: ' + str(tx-t0))
 			if verbose:
 				plt.show()
 			# add to frames for animation
@@ -184,15 +186,16 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],mycolormap
 	return 1 
 
 
-def get_hist(data=None,bins=256,figsize=(12,8)):
+def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 	counts,bins=np.histogram(data, bins=bins);
-	plt.figure(figsize=figsize);
-	plt.title('Extracting vmin/vmax to set contrast');
-	plt.hist(bins[:-1], bins, weights=counts,label='Counts');
 	places = np.where(counts>1);
 	vmin_i,vmax_i= np.min(places),np.max(places);
-	plt.hist( [bins[:-1][vmin_i],bins[:-1][vmax_i]], bins, weights=[np.max(counts),np.max(counts)],label='Histogram Edges');
-	plt.legend();
 	(vmin,vmax) = (bins[:-1][vmin_i],bins[:-1][vmax_i])
-	print('(vmin,vmax)=',(vmin,vmax));
+	if verbose:
+		plt.figure(figsize=figsize);
+		plt.title('Extracting vmin/vmax to set contrast');
+		plt.hist(bins[:-1], bins, weights=counts,label='Counts');
+		plt.hist( [bins[:-1][vmin_i],bins[:-1][vmax_i]], bins, weights=[np.max(counts),np.max(counts)],label='Histogram Edges');
+		plt.legend();
+		print('(vmin,vmax)=',(vmin,vmax));
 	return vmin,vmax
