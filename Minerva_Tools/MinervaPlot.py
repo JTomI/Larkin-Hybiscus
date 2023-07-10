@@ -166,7 +166,7 @@ def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],vmin=None,
 			font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
 			text.set_font_properties(font)
 			# ax_main.set_title(str(lognum) + '   ' + str(i) + '   ' + list_all[i] + ' time elapsed ' + str(tx-t0))
-			ax_main.set_title('Fr#:' + str(i) + ' , ' + ' Time: ' + str(tx-t0))
+			ax_main.set_title('#' + str(i) + ' , ' + 'Time: ' + str(tx-t0))
 			if verbose:
 				plt.show()
 			# add to frames for animation
