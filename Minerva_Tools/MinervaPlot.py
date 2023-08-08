@@ -73,7 +73,8 @@ def plot_single(data=None,data_name='',tx=0,t0=0,colormap='Blues',verbose=True,v
 	plt.close(fig)
 	return im
 
-def save_animation(manager,savename,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
+def image_timelapse(manager,savename,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
+	'''Saves impedance data as a pure image timelapse, no labels/graphs etc.'''
 	normrows=range(normrows[0],normrows[1])
 	t0 = data_times[0]
 	frames=[]
@@ -89,101 +90,43 @@ def save_animation(manager,savename,data_times=None,data_names=None,vrange=[-4,1
 	print(' --  Animation saved as {}  -- '.format(filename))
 	return 1
 
-def imp_plot(manager=None,imrange=None,normrows=[0,511],vrange=[-4,1],vmin=None,vmax=None,mycolormap='Blues',Nstd=5,verbose=True,fps=10,deltas=False,pltall=True):
-	'''Plots impedance timelapse as .gif video generated from Minerva .h5 Logfiles. If there are multiple logfiles in designated folder,
-	 combines all timelapses and time orders them.'''
-	# ph1,ph2,times,names = manager.get_data_stack(imrange=imrange)
-	# time.sleep(0.2)
-	myframes=[]
-	image_1_ref = None
-	image_2_ref = None
-	t0 = None
-	for lognum,logname in enumerate(manager.logfiles):
-		fullname = os.path.join(manager.logdir,logname) 
-		list_all = manager.get_list(fullname,sortby='time')
-		list_impedance = manager.get_list(fullname,filterstring='impedance')
-		if verbose:
-			print('\n\nall\n\n',list_all)
-			print('\n\nimpedance\n\n',list_impedance)
-		if t0==None:
-			t0 = manager.get_time(fullname,list_impedance[0])
-		if imrange==None:
-			imrange=[0,len(list_impedance)]
-		else:
-			if imrange[1]>len(list_impedance):
-				print('Frame index out of range')
-				break
-			if imrange[0]<0:
-				print('Frame index out of range')
-				break
-		if pltall:
-			imprange = range(len(list_impedance))
-		else:
-			imprange = range(imrange[0],imrange[1],1)
-		for i in tqdm(imprange,
-			desc ='...Generating all impedance images from logfile {}'.format(os.path.basename(logname))):
-			image_2d_ph1,image_2d_ph2 = manager.get_data(fullname,list_impedance[i])
-			image_2d_ph1 = rm_banding(image_2d_ph1)
-			image_2d_ph2 = rm_banding(image_2d_ph2)
-			# ~~~~~~~~~~~~~~~~~~
-			# image_2d_ph1 = normalize_by_channel(image=image_2d_ph1,normrows=normrows)
-			# image_2d_ph2 = normalize_by_channel(image=image_2d_ph2,normrows=normrows)	
-			# ~~~~~~~~~~~~~~~~~~
-			image_2d_ph1 = remove_outliers(image=image_2d_ph1,Nstd=Nstd)
-			image_2d_ph2 = remove_outliers(image=image_2d_ph2,Nstd=Nstd)	
-			# ~~~~~~~~~~~~~~~~~~
-			# re-normalize again
-			# image_2d_ph1 = normalize_by_channel(image=image_2d_ph1,normrows=normrows)
-			# image_2d_ph2 = normalize_by_channel(image=image_2d_ph2,normrows=normrows)	
-
-			image_1 = image_2d_ph1
-			image_2 = image_2d_ph2
-			#Set Reference images to subtract for contrast
-			if image_1_ref is None:
-				image_1_ref = image_1
-				continue
-			if image_2_ref is None:
-				image_2_ref = image_2
-				continue
-			# Subtract first phase image from dataset if there are artifacts in the image
-			if deltas:
-				if i!=0:
-					image_1-=image_1_ref
-					image_2-=image_2_ref
-			final_image = (image_1+image_2)/2
-			tx = manager.get_time(fullname,list_impedance[i])
-			fig = plt.figure(figsize=(12,6))
-			grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
-			ax_main = fig.add_subplot(grid[:, :])
-			if vmin==None:
-				vmin=np.mean(final_image[normrows,:])+vrange[0]*np.std(final_image[normrows,:])
-			if vmax==None:
-				vmax=np.mean(final_image[normrows,:])+vrange[1]*np.std(final_image[normrows,:])
-			im1 = ax_main.imshow(np.flip(final_image),vmin=vmin,vmax=vmax, cmap=mycolormap)
-			cb=fig.colorbar(im1,ax=ax_main,label='Capacitance [Farads]')
-			axcb = cb.ax
-			text = axcb.yaxis.label
-			font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
-			text.set_font_properties(font)
-			# ax_main.set_title(str(lognum) + '   ' + str(i) + '   ' + list_all[i] + ' time elapsed ' + str(tx-t0))
-			ax_main.set_title('#' + str(i) + ' , ' + 'Time: ' + str(tx-t0))
-			if verbose:
-				plt.show()
-			# add to frames for animation
-			fig.canvas.draw()	   # draw the canvas, cache the renderer
-			im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-			myframes.append(im)
-			plt.close(fig)
-	#Save all frames
-	print(' -- Saving plots as .gif animation -- ')
-	plotdir = os.path.join(manager.logdir,'plots')
-	if(not os.path.exists(plotdir)):
-		os.mkdir(plotdir)
-	savename=os.path.join(plotdir,os.path.basename(logname).replace('.h5','.gif'))
-	imageio.mimsave(savename,myframes, fps=fps)
-	print(' --  Animation saved as {}  -- '.format(savename))
-	return 1 
+def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imrange=None,vmin=None,vmax=None,mycolormap='Blues',fps=10,verbose=False):
+    '''Plots impedance data in graphs then saves as a timelapse in .gif video format.'''
+    t0 = timestamps[0]
+    if imrange==None:
+        imprange=range(len(images))
+    else:
+        imprange=range(len(images[imrange[0]:imrange[1]]))
+    myframes=[]
+    for i in tqdm(imprange, desc =' -- Generating impedance timelapse -- '):
+        tx=times[i]
+        fig = plt.figure(figsize=(12,6))
+        grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
+        ax_main = fig.add_subplot(grid[:, :])
+        im1 = ax_main.imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=mycolormap)
+        cb=fig.colorbar(im1,ax=ax_main,label='Capacitance [Farads]')
+        axcb = cb.ax
+        text = axcb.yaxis.label
+        font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
+        text.set_font_properties(font)
+        ax_main.set_title('Time Elapsed: ' + str(tx-t0))
+        if verbose:
+            plt.show()
+        # add to frames for animation
+        fig.canvas.draw()	   # draw the canvas, cache the renderer
+        im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+        im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        myframes.append(im)
+        plt.close(fig)
+    #Save all frames
+    print(' -- Saving plots as .gif animation -- ')
+    plotdir = os.path.join(manager.logdir,'plots')
+    if(not os.path.exists(plotdir)):
+        os.mkdir(plotdir)
+    path =os.path.join(plotdir,savename+'.gif')
+    imageio.mimsave(path,myframes, fps=fps)
+    print(' --  Animation saved as {}  -- '.format(savename))
+    return 1  
 
 
 def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
