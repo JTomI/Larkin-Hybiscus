@@ -142,3 +142,11 @@ def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 		plt.legend();
 		print('(vmin,vmax)=',(vmin,vmax));
 	return vmin,vmax
+
+def combine_ph(images_ph1,images_ph2):
+	'''Standard function for combining impedance images of different phase.'''
+	final_images = (np.array(images_ph1)+np.array(images_ph2))/2
+    for i in tqdm(range(len(final_images)),desc= ' -- Combining impedance phases -- '):
+        final_images[i] = remove_outliers(final_images[i])
+        final_images[i] = rm_banding(final_images[i])
+    return final_images
