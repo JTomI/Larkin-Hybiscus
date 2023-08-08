@@ -78,7 +78,7 @@ def image_timelapse(manager,savename,data_times=None,data_names=None,vrange=[-4,
 	normrows=range(normrows[0],normrows[1])
 	t0 = data_times[0]
 	frames=[]
-	for i in tqdm(range(len(data)), desc='Plotting'):
+	for i in tqdm(range(len(data)), desc='-- Generating Timelapse --'):
 		im=plot_single(data=data[i],data_name=data_names[i],tx=data_times[i],t0=data_times[0],vrange=vrange,normrows=normrows,colormap='Blues',verbose=verbose)
 		frames.append(im)
 	print(' -- Saving plots as .gif animation -- ')
@@ -98,7 +98,7 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 	else:
 		imprange=range(len(images[imrange[0]:imrange[1]]))
 	myframes=[]
-	for i in tqdm(imprange, desc =' -- Generating impedance timelapse -- '):
+	for i in tqdm(imprange, desc ='-- Generating Timelapse --'):
 		tx=times[i]
 		fig = plt.figure(figsize=(12,6))
 		grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
@@ -126,8 +126,46 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 	path =os.path.join(plotdir,savename+'.gif')
 	imageio.mimsave(path,myframes, fps=fps)
 	print(' --  Animation saved as {}  -- '.format(savename))
-	return 1  
+	return 1
 
+def graph_with_hist(manager=None,savename=None,images=None, timestamps=None,imrange=None,mycolormap='Blues',fps=10,verbose=False, bins=256):
+    '''Graphs impedance images alongside corresponding histograms'''
+    vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
+    myframes=[]
+    for i in tqdm(range(len(images)), desc='-- Generating Timelapse --'):
+        tx=timestamps[i]
+        fig = plt.figure(figsize=(12,16))
+        axes = fig.subplots(2,1)
+        counts,bins=np.histogram(images[i], bins=bins)
+        im1 = axes[0].imshow(images[i].T,vmin=vmin,vmax=vmax, cmap=mycolormap);
+        axes[0].set_title('Time Elapsed: ' + str(tx-t0))
+        cax = fig.add_axes([axes[0].get_position().x1+0.1,axes[0].get_position().y0+0.045,0.03,axes[0].get_position().height])
+        plt.colorbar(im1, cax=cax,label='Capacitance [Farads]')
+
+        axes[1].hist(bins[:-1], bins, weights=counts);
+        axes[1].plot([vmin,vmin],[0,8000],label='vmin={:.3e}'.format(vmin));
+        axes[1].plot([vmax,vmax],[0,8000],label='vmax={:.3e}'.format(vmax));
+        axes[1].set_ylabel("Counts")
+        axes[1].set_xlabel("Capacitance [Farads]")
+        axes[1].legend()
+        text = cax.yaxis.label
+        font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
+        text.set_font_properties(font)
+        # add to frames for animation
+        fig.canvas.draw()   # draw the canvas, cache the renderer
+        im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+        im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        myframes.append(im)
+        plt.close(fig)
+    #Save all frames
+    print(' -- Saving plots as .gif animation -- ')
+    plotdir = os.path.join(manager.logdir,'plots')
+    if(not os.path.exists(plotdir)):
+        os.mkdir(plotdir)
+    path =os.path.join(plotdir,savename+'.gif')
+    imageio.mimsave(path,myframes, fps=fps)
+    print(' --  Animation saved as {}  -- '.format(savename))
+    return vmin,vmax
 
 def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 	counts,bins=np.histogram(data, bins=bins);
