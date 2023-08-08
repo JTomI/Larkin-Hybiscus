@@ -91,42 +91,42 @@ def image_timelapse(manager,savename,data_times=None,data_names=None,vrange=[-4,
 	return 1
 
 def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imrange=None,vmin=None,vmax=None,mycolormap='Blues',fps=10,verbose=False):
-    '''Plots impedance data in graphs then saves as a timelapse in .gif video format.'''
-    t0 = timestamps[0]
-    if imrange==None:
-        imprange=range(len(images))
-    else:
-        imprange=range(len(images[imrange[0]:imrange[1]]))
-    myframes=[]
-    for i in tqdm(imprange, desc =' -- Generating impedance timelapse -- '):
-        tx=times[i]
-        fig = plt.figure(figsize=(12,6))
-        grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
-        ax_main = fig.add_subplot(grid[:, :])
-        im1 = ax_main.imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=mycolormap)
-        cb=fig.colorbar(im1,ax=ax_main,label='Capacitance [Farads]')
-        axcb = cb.ax
-        text = axcb.yaxis.label
-        font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
-        text.set_font_properties(font)
-        ax_main.set_title('Time Elapsed: ' + str(tx-t0))
-        if verbose:
-            plt.show()
-        # add to frames for animation
-        fig.canvas.draw()	   # draw the canvas, cache the renderer
-        im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-        im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        myframes.append(im)
-        plt.close(fig)
-    #Save all frames
-    print(' -- Saving plots as .gif animation -- ')
-    plotdir = os.path.join(manager.logdir,'plots')
-    if(not os.path.exists(plotdir)):
-        os.mkdir(plotdir)
-    path =os.path.join(plotdir,savename+'.gif')
-    imageio.mimsave(path,myframes, fps=fps)
-    print(' --  Animation saved as {}  -- '.format(savename))
-    return 1  
+	'''Plots impedance data in graphs then saves as a timelapse in .gif video format.'''
+	t0 = timestamps[0]
+	if imrange==None:
+		imprange=range(len(images))
+	else:
+		imprange=range(len(images[imrange[0]:imrange[1]]))
+	myframes=[]
+	for i in tqdm(imprange, desc =' -- Generating impedance timelapse -- '):
+		tx=times[i]
+		fig = plt.figure(figsize=(12,6))
+		grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
+		ax_main = fig.add_subplot(grid[:, :])
+		im1 = ax_main.imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=mycolormap)
+		cb=fig.colorbar(im1,ax=ax_main,label='Capacitance [Farads]')
+		axcb = cb.ax
+		text = axcb.yaxis.label
+		font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
+		text.set_font_properties(font)
+		ax_main.set_title('Time Elapsed: ' + str(tx-t0))
+		if verbose:
+			plt.show()
+		# add to frames for animation
+		fig.canvas.draw()	   # draw the canvas, cache the renderer
+		im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+		im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+		myframes.append(im)
+		plt.close(fig)
+	#Save all frames
+	print(' -- Saving plots as .gif animation -- ')
+	plotdir = os.path.join(manager.logdir,'plots')
+	if(not os.path.exists(plotdir)):
+		os.mkdir(plotdir)
+	path =os.path.join(plotdir,savename+'.gif')
+	imageio.mimsave(path,myframes, fps=fps)
+	print(' --  Animation saved as {}  -- '.format(savename))
+	return 1  
 
 
 def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
@@ -146,7 +146,7 @@ def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 def combine_ph(images_ph1,images_ph2):
 	'''Standard function for combining impedance images of different phase.'''
 	final_images = (np.array(images_ph1)+np.array(images_ph2))/2
-    for i in tqdm(range(len(final_images)),desc= ' -- Combining impedance phases -- '):
-        final_images[i] = remove_outliers(final_images[i])
-        final_images[i] = rm_banding(final_images[i])
-    return final_images
+	for i in tqdm(range(len(final_images)),desc= ' -- Combining impedance phases -- '):
+		final_images[i] = remove_outliers(final_images[i])
+		final_images[i] = rm_banding(final_images[i])
+	return final_images
