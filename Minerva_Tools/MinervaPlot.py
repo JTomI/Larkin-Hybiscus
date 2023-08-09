@@ -99,7 +99,7 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 		imprange=range(len(images[imrange[0]:imrange[1]]))
 	myframes=[]
 	for i in tqdm(imprange, desc ='-- Generating Timelapse --'):
-		tx=times[i]
+		tx=timestamps[i]
 		fig = plt.figure(figsize=(12,6))
 		grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
 		ax_main = fig.add_subplot(grid[:, :])
