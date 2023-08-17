@@ -96,7 +96,7 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 	if imrange==None:
 		imprange=range(len(images))
 	else:
-		imprange=range(len(images[imrange[0]:imrange[1]]))
+		imprange=range(imrange[0],imrange[1],1) 
 	myframes=[]
 	for i in tqdm(imprange, desc ='-- Generating Timelapse --'):
 		tx=timestamps[i]
@@ -131,8 +131,12 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 def graph_with_hist(manager=None,savename=None,images=None, timestamps=None,imrange=None,mycolormap='Blues',fps=10,verbose=False, nbins=256):
 	'''Graphs impedance images alongside corresponding histograms'''
 	vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
+	if imrange==None:
+		imprange=range(len(images))
+	else:
+		imprange=range(imrange[0],imrange[1],1) 
 	myframes=[]
-	for i in tqdm(range(len(images)), desc='-- Generating Timelapse --'):
+	for i in tqdm(imprange, desc='-- Generating Timelapse --'):
 		tx=timestamps[i]
 		fig = plt.figure(figsize=(12,16))
 		axes = fig.subplots(2,1)
@@ -190,3 +194,62 @@ def combine_ph(images_ph1,images_ph2):
 		final_images[i] = remove_outliers(final_images[i])
 		final_images[i] = rm_banding(final_images[i])
 	return final_images
+
+def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,mycolormap='Blues',nclass=3,fps=6,verbose=False):
+    '''Edge detection masking for pellicle experiments.'''
+    vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
+    if imrange==None:
+        imprange=range(len(images))
+    else:
+        imprange=range(imrange[0],imrange[1],1)   
+    otsumasks=[] #n-region otsu masks
+    binmasks=[] #binary masks processed from otsu  
+    myframes=[] #graphs
+    for i in tqdm(imprange, desc='-- Generating Timelapse --'):
+        tx=timestamps[i]
+        otsu_mask = detect_edge(images[i],nclass=nclass,verbose=False)
+        bin_mask = np.zeros_like(otsumask)
+        bin_mask[otsu_mask!=(nclass-1)]=1
+        otsumasks.append(otsu_mask)
+        binmasks.append(bin_mask)
+        
+        fig, axes = plt.subplots(ncols=3, figsize=(24, 8))
+        fig.suptitle('Impedance Image Classification, Time Elapsed: {}'.format(tx-t0))
+        ax = axes.ravel()
+        ax[0] = plt.subplot(1, 3, 1)
+        ax[1] = plt.subplot(1, 3, 2)
+        ax[2] = plt.subplot(1, 3, 3, sharex=ax[0], sharey=ax[0])
+
+        im1 = ax[0].imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=mycolormap)
+        ax[0].set_title('Impedance')
+        ax[0].axis('off')
+        cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
+        
+        
+        im2 = ax[1].imshow(np.flip(otsu_mask),vmin=0,vmax=nclass-1, cmap=cm.get_cmap('plasma', nclass))
+        ax[1].set_title('Multi-Otsu')
+        ax[1].axis('off')
+        cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
+        cb2.ax.set_yticklabels(list(range(nclass)))
+        
+        im3 = ax[2].imshow(np.flip(bin_mask),vmin=0,vmax=1, cmap=cm.get_cmap('jet', 2))
+        ax[2].set_title('Binary')
+        ax[2].axis('off')
+        cb3=fig.colorbar(im3,ax=ax[2],ticks=list(range(2)))
+        cb3.ax.set_yticklabels(list(range(2)))
+        if verbose:
+            plt.show()
+        fig.canvas.draw()   # draw the canvas, cache the renderer
+        im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+        im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        myframes.append(im)
+        plt.close(fig)
+    #Save all frames
+    print(' -- Saving plots as .gif animation -- ')
+    plotdir = os.path.join(manager.logdir,'plots')
+    if(not os.path.exists(plotdir)):
+        os.mkdir(plotdir)
+    path =os.path.join(plotdir,savename+'.gif')
+    imageio.mimsave(path,myframes, fps=fps)
+    print(' --  Animation saved as {}  -- '.format(savename))
+    return otsumasks, binmasks
