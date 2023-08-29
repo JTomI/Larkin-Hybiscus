@@ -228,7 +228,7 @@ def detect_edge(image=None,nclass=3,verbose=False):
 
 		plt.subplots_adjust()
 		plt.show()
-	return otsumask
+	return otsumask, thresholds
 
 def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,mycolormap='Blues',nclass=3,fps=6,verbose=False):
 	'''Edge detection masking for pellicle experiments.'''
