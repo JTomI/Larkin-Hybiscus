@@ -242,7 +242,7 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 	myframes=[] #graphs
 	for i in tqdm(imprange, desc='-- Generating Timelapse --'):
 		tx=timestamps[i]
-		otsu_mask = detect_edge(images[i],nclass=nclass,verbose=False)
+		otsu_mask,thresholds = detect_edge(images[i],nclass=nclass,verbose=False)
 		bin_mask = np.zeros_like(otsu_mask)
 		bin_mask[otsu_mask!=(nclass-1)]=1
 		otsumasks.append(otsu_mask)
