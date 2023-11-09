@@ -134,50 +134,38 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 	print(' --  Animation saved as {}  -- '.format(savename))
 	return 1
 
-def graph_with_hist(manager=None,savename=None,images=None, timestamps=None,imrange=None,mycolormap='Blues',fps=10,verbose=False, nbins=256):
-	'''Graphs impedance images alongside corresponding histograms'''
-	vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
-	if imrange==None:
-		imprange=range(len(images))
-	else:
-		imprange=range(imrange[0],imrange[1],1) 
-	myframes=[]
-	for i in tqdm(imprange, desc='-- Generating Timelapse --'):
-		tx=timestamps[i]
-		fig = plt.figure(figsize=(12,16))
-		axes = fig.subplots(2,1)
-		counts,bins=np.histogram(images[i], bins=nbins)
-		im1 = axes[0].imshow(images[i].T,vmin=vmin,vmax=vmax, cmap=mycolormap);
-		axes[0].set_title('Time Elapsed: ' + str(tx-t0))
-		# cax = fig.add_axes([axes[0].get_position().x1+0.1,axes[0].get_position().y0+0.045,0.03,axes[0].get_position().height])
-		# plt.colorbar(im1, cax=cax,label='Capacitance [Farads]')
-		cb=fig.colorbar(im1,ax=axes[0],label='Capacitance [Farads]')
-		axcb = cb.ax
-		text = axcb.yaxis.label
-		font = font_manager.FontProperties(family='times new roman', style='italic', size=20)
-		text.set_font_properties(font)
+def imp_display(image=None, std_range=(-4,2), imp_colormap='Blues', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600):
+	"""Display and save a single impedance image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
+	image=image.copy() # make sure not to modify original
+	image*=1e15 #Shift unit to fFarads for later
+	n1,n2=std_range;
+	vmin=np.mean(image)+n1*np.std(image);vmax=np.mean(image)+n2*np.std(image);
+	thresholds = threshold_multiotsu(image,classes=nclass)
+	otsumask = np.digitize(image, bins=thresholds)
 
-		axes[1].hist(bins[:-1], bins, weights=counts,range=[vmin, vmax]);
-		axes[1].plot([vmin,vmin],[0,8000],label='vmin={:.3e}'.format(vmin));
-		axes[1].plot([vmax,vmax],[0,8000],label='vmax={:.3e}'.format(vmax));
-		axes[1].set_ylabel("Counts")
-		axes[1].set_xlabel("Capacitance [Farads]")
-		axes[1].legend()
+	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
+	im=ax[0].imshow(np.rot90(image.T,axes=(1,0)),vmin=vmin,vmax=vmax, cmap=imp_colormap)
+	ax[0].set_title('Original Impedance')
+	# ax[0].axis('off')
+	cb0=fig.colorbar(im,ax=ax[0],label='Capacitance [fFarads]')
 
-		fig.canvas.draw()   # draw the canvas, cache the renderer
-		im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-		im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-		myframes.append(im)
-		plt.close(fig)
-	#Save all frames
-	print(' -- Saving plots as .gif animation -- ')
-	plotdir = os.path.join(manager.logdir,'plots')
-	if(not os.path.exists(plotdir)):
-		os.mkdir(plotdir)
-	path =os.path.join(plotdir,savename+'.gif')
-	imageio.mimsave(path,myframes, fps=fps)
-	print(' --  Animation saved as {}  -- '.format(savename))
-	return vmin,vmax
+	ax[1].hist(image.ravel(), bins=nbins)
+	ax[1].set_title('Histogram')
+	for thresh in thresholds:
+	    ax[1].axvline(thresh, color='r',label='otsu-thresh')
+	ax[1].axvline(vmin,label='vmin',color='orange')
+	ax[1].axvline(vmax,label='vmax',color='green')
+	ax[1].legend()
+
+	im1=ax[2].imshow(np.rot90(otsumask.T,axes=(1,0)), cmap=cm.get_cmap(otsu_colormap, nclass))
+	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
+	# ax[2].axis('off')
+	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
+	cb1.ax.set_yticklabels(list(range(nclass-1)))
+	print('vmin=',vmin,'[Farad]', 'vmax=',vmax,'[Farad]')
+	if save:
+		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
+	return otsumask, thresholds, vmin, vmax
 
 def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 	counts,bins=np.histogram(data, bins=bins);
