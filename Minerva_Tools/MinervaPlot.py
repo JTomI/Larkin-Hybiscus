@@ -134,15 +134,19 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 	print(' --  Animation saved as {}  -- '.format(savename))
 	return 1
 
-def imp_display(image=None, std_range=(-4,2), imp_colormap='Blues', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600):
+def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap='Blues', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600):
 	"""Display and save a single impedance image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
 	image=image.copy() # make sure not to modify original
-	image*=1e15 #Shift unit to fFarads for later
+	 #Shift unit to fFarads for later
 	n1,n2=std_range;
-	vmin=np.mean(image)+n1*np.std(image);vmax=np.mean(image)+n2*np.std(image);
+	if vmin == None:
+		vmin=np.mean(image)+n1*np.std(image);
+	if vmax == None:
+		vmax=np.mean(image)+n2*np.std(image);
 	thresholds = threshold_multiotsu(image,classes=nclass)
 	otsumask = np.digitize(image, bins=thresholds)
 
+	image*=1e15;vmin*=1e15;vmax*=1e15;thresholds*=1e15;
 	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
 	im=ax[0].imshow(np.rot90(image.T,axes=(1,0)),vmin=vmin,vmax=vmax, cmap=imp_colormap)
 	ax[0].set_title('Original Impedance')
@@ -153,6 +157,8 @@ def imp_display(image=None, std_range=(-4,2), imp_colormap='Blues', otsu_colorma
 	ax[1].set_title('Histogram')
 	for thresh in thresholds:
 	    ax[1].axvline(thresh, color='r',label='otsu-thresh')
+	ax[1].set_xlabel('Capacitance [fFarads]')
+	ax[1].set_ylabel('Count')
 	ax[1].axvline(vmin,label='vmin',color='orange')
 	ax[1].axvline(vmax,label='vmax',color='green')
 	ax[1].legend()
@@ -161,11 +167,50 @@ def imp_display(image=None, std_range=(-4,2), imp_colormap='Blues', otsu_colorma
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
 	# ax[2].axis('off')
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
-	cb1.ax.set_yticklabels(list(range(nclass-1)))
-	print('vmin=',vmin,'[Farad]', 'vmax=',vmax,'[Farad]')
+	cb1.ax.set_yticklabels(list(range(nclass)))
+	print('vmin=',vmin,'[fFarad]', 'vmax=',vmax,'[fFarad]')
 	if save:
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
+
+def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colormap='Plasma', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600):
+	"""Display and save a single tiff image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
+	image=image.copy() # make sure not to modify original
+	 #Shift unit to fFarads for later
+	n1,n2=std_range;
+	if vmin == None:
+		vmin=np.mean(image)+n1*np.std(image);
+	if vmax == None:
+		vmax=np.mean(image)+n2*np.std(image);
+	thresholds = threshold_multiotsu(image,classes=nclass)
+	otsumask = np.digitize(image, bins=thresholds)
+
+	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
+	im=ax[0].imshow(image,vmin=vmin,vmax=vmax, cmap=tiff_colormap)
+	ax[0].set_title('Original Tiff')
+	# ax[0].axis('off')
+	cb0=fig.colorbar(im,ax=ax[0],label='Intensity [a.u.]')
+
+	ax[1].hist(image.ravel(), bins=nbins)
+	ax[1].set_title('Histogram')
+	for thresh in thresholds:
+	    ax[1].axvline(thresh, color='r',label='otsu-thresh')
+	ax[1].set_xlabel('Intensity [a.u.]')
+	ax[1].set_ylabel('Count')
+	ax[1].axvline(vmin,label='vmin',color='orange')
+	ax[1].axvline(vmax,label='vmax',color='green')
+	ax[1].legend()
+
+	im1=ax[2].imshow(otsumask, cmap=cm.get_cmap(otsu_colormap, nclass))
+	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
+	# ax[2].axis('off')
+	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
+	cb1.ax.set_yticklabels(list(range(nclass)))
+	print('vmin=',vmin,'[a.u]', 'vmax=',vmax,'[a.u]')
+	if save:
+		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
+	return otsumask, thresholds, vmin, vmax
+
 
 def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 	counts,bins=np.histogram(data, bins=bins);
