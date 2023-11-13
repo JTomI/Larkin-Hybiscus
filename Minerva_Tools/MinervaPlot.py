@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import os
+from copy import deepcopy
 import scipy
 from scipy.signal import correlate
 import glob
@@ -16,6 +17,7 @@ from MinervaManager import MinervaManager as MM
 import time
 from skimage.feature import canny
 from scipy import ndimage as ndi
+from scipy import fftpack
 from skimage.filters import sobel, threshold_multiotsu
 from skimage.segmentation import watershed
 from pylab import cm
@@ -136,7 +138,7 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 
 def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap='Blues', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600):
 	"""Display and save a single impedance image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
-	image=image.copy() # make sure not to modify original
+	image=deepcopy(image) # make sure not to modify original
 	 #Shift unit to fFarads for later
 	n1,n2=std_range;
 	if vmin == None:
@@ -175,7 +177,7 @@ def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 
 def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colormap='Plasma', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600):
 	"""Display and save a single tiff image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
-	image=image.copy() # make sure not to modify original
+	image=deepcopy(image) # make sure not to modify original
 	 #Shift unit to fFarads for later
 	n1,n2=std_range;
 	if vmin == None:
@@ -251,14 +253,12 @@ def detect_edge(image=None,nclass=3,verbose=False):
 		ax[1].set_title('Histogram')
 		for thresh in thresholds:
 			ax[1].axvline(thresh, color='r')
-
 		# Plotting the Multi Otsu result.
 		im1=ax[2].imshow(otsumask, cmap='jet')
 		ax[2].set_title('Multi-Otsu result')
 		ax[2].axis('off')
 		cb=fig.colorbar(im1,ax=ax[2],label='Capacitance [Farads]')
 		axcb = cb.ax
-
 		plt.subplots_adjust()
 		plt.show()
 	return otsumask, thresholds
@@ -321,3 +321,96 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 		imageio.mimsave(path,myframes, fps=fps)
 		print(' --  Animation saved as {}  -- '.format(savename))
 	return otsumasks, binmasks
+
+def fftfilter(zstack=None,linewidth=10,recoverywidth=100,verbose=True):
+    x=np.array(range(0,((zstack.shape[1]//511) +1)*511,511))
+    y=np.array(range(0,((zstack.shape[2]//256) +1)*256,256))
+    mask=np.ones_like(zstack[0,:,:])
+    for i in x:
+        if i==0:
+            mask[i:i+2*linewidth,:]=0
+        elif i==(zstack.shape[1]//511)*511:
+            mask[i-2*linewidth:i,:]=0
+        else:
+            mask[i-linewidth:i+linewidth,:]=0
+    for j in y:
+        if j==0:
+            mask[:,j:j+2*linewidth]=0
+        elif j==(zstack.shape[2]//256)*256:
+            mask[:,j-2*linewidth:j]=0
+        else:
+            mask[:,j-linewidth:j+linewidth]=0
+    
+    mask[0:2*recoverywidth,zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
+    mask[0:0+2*recoverywidth,0:0+recoverywidth]=1
+    mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
+    mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],0:0+recoverywidth]=1
+    if verbose:
+        max_projection = np.max(zstack, axis=0)
+        filtered_max = abs(fftpack.fft2(max_projection))
+        
+        fig,ax=plt.subplots(nrows=1,ncols=2,figsize=(10,20))
+        vmin=np.min(filtered_max);vmax=np.mean(filtered_max)+1*np.std(filtered_max);
+        im1=ax[0].imshow(filtered_max,vmin=vmin,vmax=vmax,cmap='plasma')
+        ax[0].set_title('Raw FFT of max projection')
+        cb=fig.colorbar(im1,ax=ax[0],label='',fraction=0.087,pad=0.04)
+        
+        filtered_max[mask==0]=0
+        ax[1].axis('off')
+        ax[1].set_title('Masked FFT')
+        fftmin=np.min(filtered_max);fftmax=np.mean(filtered_max)+1*np.std(filtered_max);
+        im2= ax[1].imshow(filtered_max,vmin=fftmin,vmax=fftmax,cmap='plasma')
+        cb=fig.colorbar(im2,ax=ax[1],label='',fraction=0.087,pad=0.04)
+        plt.show()
+    fftmasked_zstack=[]
+    for z in tqdm(range(zstack.shape[0])):
+        im_fft2 = fftpack.fft2(zstack[z,:,:])
+        im_fft2[mask==0]=0
+        im_new = abs(fftpack.ifft2(im_fft2))
+        fftmasked_zstack.append(im_new) 
+    fftmasked_zstack=np.array(fftmasked_zstack)
+    return fftmasked_zstack
+
+def imp_fftfilter(zstack=None,recoverywidth=25,verbose=True,linewidth=2,threshold=None):
+    max_projection = np.max(zstack, axis=0)
+    max_fft = abs(fftpack.fft2(max_projection))
+#     max_fft = gaussian(abs(fftpack.fft2(max_projection)),sigma=3)
+    mask=np.zeros_like(zstack[0,:,:])
+    mask=np.ones_like(zstack[0,:,:])
+    
+#     mask[np.where(max_fft>threshold)]=0
+#     mask[np.where(gaussian(max_fft,sigma=3)>threshold)]=1
+    
+#     mask[0:2*recoverywidth,zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
+#     mask[0:0+2*recoverywidth,0:0+recoverywidth]=1
+#     mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
+#     mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],0:0+recoverywidth]=1
+    
+#     mask[0:2*recoverywidth,zstack.shape[2]-recoverywidth:zstack.shape[2]]=0
+#     mask[0:0+2*recoverywidth,0:0+recoverywidth]=0
+#     mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],zstack.shape[2]-recoverywidth:zstack.shape[2]]=0
+#     mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],0:0+recoverywidth]=0
+
+    if verbose: 
+        fig,ax=plt.subplots(nrows=1,ncols=2,figsize=(10,20))
+        vmin=np.min(max_fft);vmax=np.mean(max_fft)+1*np.std(max_fft);
+        im1=ax[0].imshow(max_fft,vmin=vmin,vmax=vmax,cmap='plasma')
+        ax[0].set_title('Raw FFT of max projection')
+        cb=fig.colorbar(im1,ax=ax[0],label='',fraction=0.087,pad=0.04)
+        
+        max_fft[mask==0]=0
+        ax[1].axis('off')
+        ax[1].set_title('Masked FFT')
+        fftmin=np.min(max_fft);fftmax=np.mean(max_fft)+1*np.std(max_fft);
+        im2= ax[1].imshow(max_fft,vmin=fftmin,vmax=fftmax,cmap='plasma')
+        cb=fig.colorbar(im2,ax=ax[1],label='',fraction=0.087,pad=0.04)
+        plt.show()
+        
+    fftmasked_zstack=[]
+    for z in tqdm(range(zstack.shape[0])):
+        im_fft2 = fftpack.fft2(zstack[z,:,:])
+        im_fft2[mask==0]=0
+        im_new = abs(fftpack.ifft2(im_fft2))
+        fftmasked_zstack.append(im_new) 
+    fftmasked_zstack=np.array(fftmasked_zstack)
+    return fftmasked_zstack
