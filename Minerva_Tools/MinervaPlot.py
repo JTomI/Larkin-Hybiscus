@@ -327,7 +327,7 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 		print(' --  Animation saved as {}  -- '.format(savename))
 	return otsumasks, binmasks
 
-def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r'):
+def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',shifted=True):
 	#Generate the max or mean projections from confocal z-stack and filter out Minerva CMOS artifacts with 2D FFT.
 	x = np.arange(0,int((zstack.shape[1]/511)*511),511)
 	y = np.arange(0,int((zstack.shape[2]/256)*256),256)
@@ -354,16 +354,17 @@ def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,sa
 	max_projection = np.max(zstack, axis=0)
 	mean_projection = np.mean(zstack, axis=0)
 	print('Z-projections passed')
-	fft_max = fftpack.fft2(max_projection)
+	fft_max = np.flip(fftpack.fft2(max_projection),axis=1)
 	fft_mean = fftpack.fft2(mean_projection)
-	fftmask_max = fft_max*mask
+	fftmask_max = np.flip(fft_max*mask,axis=1)
 	fftmask_mean = fft_mean*mask
 	print('fft masking passed')
-
-	fftabsmax = abs(fft_max)
-	fftabsmax *= int(255/np.max(fftabsmax))
-	maskabsmax = abs(fftmask_max)
-	maskabsmax *= int(255/np.max(maskabsmax))
+	if shifted:
+		fftabsmax = abs(np.fft.fftshift(fft_max,axes=(0,1))).astype('int')
+		maskabsmax = abs(np.fft.fftshift(fftmask_max,axes=(0,1))).astype('int')
+	else:
+		fftabsmax = abs(fft_max).astype('int')
+		maskabsmax = abs(fftmask_max).astype('int')
 	#Inverse FFT to recover image, now FFT filtered
 	filtered_max = abs(fftpack.ifft2(fftmask_max))
 	filtered_mean = abs(fftpack.ifft2(fftmask_mean))
@@ -383,7 +384,7 @@ def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,sa
 	ax[1].set_title('Masked 2D-FFT Spectrum',fontsize=titlefont)
 	ax[1].set_xlabel(r'fx 1/[px]', fontsize=axlabelfont)
 	ax[1].set_ylabel(r'fy  1/[px]',fontsize=axlabelfont)
-	fftmin=np.min(maskabsmax);fftmax=np.mean(maskabsmax)+nstd*np.std(maskabsmax);
+	fftmin=np.min(fftabsmax);fftmax=np.mean(fftabsmax)+nstd*np.std(fftabsmax);
 	im2= ax[1].imshow(maskabsmax,vmin=fftmin,vmax=fftmax,cmap=cmap)
 	cb=fig.colorbar(im2,ax=ax[1],label='Intensity [a.u.]',fraction=0.087,pad=0.04)
 	cb.ax.tick_params(labelsize=cbtickfont) 
