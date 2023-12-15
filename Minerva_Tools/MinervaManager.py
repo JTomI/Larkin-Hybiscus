@@ -6,34 +6,43 @@ import numpy as np
 import os
 import sys
 import glob
+import ray
 from datetime import datetime
 from itertools import chain
 import imageio
 from tqdm import tqdm
 
 class MinervaManager(object):
-	'''Manager class mLwith methods for importing and basic handling of data/metadata in Minerva generated .h5 logfiles.'''
-	def __init__(self,dtype='imp',logdir=None):
-		'''Manager is initialized to handle all logfiles sharing one minerva datatype (dtype), that exist in directory at absolute path (logdir). 
+	'''Manager class with methods for importing and basic handling of data/metadata in Minerva generated .h5 logfiles.'''
+	def __init__(self,logdir=None):
+		'''Manager is initialized and finds all .h5 files that exist in directory at absolute path (logdir), and sort into dict by minerva datatype (dtype), . 
 		Compatible dtype values are imp (Impedance), ect (Electrical Capacitance Tomography), ph (pH)'''
+		# Filters sets up the data types from Minerva that can be handled
 		self.filters = {'imp':'impedance','ph':'pH','ect':'ECT'}
-		self.dtype = dtype
 		self.logdir = logdir
-		self.logfiles = glob.glob(logdir+'*{}*.h5'.format(dtype))
-		self.filterstring = self.filters[dtype]
+		self.logfiles={}
+		self.logfile_explists={}
 		print('Logfile Directory: ',logdir)
-		print(' -- ({}) Logfiles of *{}* datatype -- '.format(len(self.logfiles),self.filters[dtype]))
+		# Find all files in logdir of each datatype that can be handled by manager
+		for dtype in self.filters.keys():
+			mode_logfiles = glob.glob(logdir+'*{}*.h5'.format(dtype))
+			print(' -- ({}) Logfiles of *{}* datatype -- '.format(len(mode_logfiles),self.filters[dtype]))
+			self.logfiles[dtype]=mode_logfiles
 		print('')
-		self.logfile_explists = []
-		for filename in self.logfiles:
-			explist = self.get_list(filename)
-			print('Filename: ',os.path.basename(filename))
-			print('# images: ',len(explist))
-			#Save all experiment names in a separate list for each logfile
-			self.logfile_explists.append(explist)
+		for dtype in self.filters.keys():
+			mode_explists=[]
+			for filename in self.logfiles[dtype]:
+				explist = self.get_list(filename, filterstring=self.filters[dtype])
+				print('Filename: ', os.path.basename(filename))
+				print('# images: ', len(explist))
+				#Save all experiment names in a separate list for each logfile
+				mode_explists.extend(explist)
+			#Enter experiment lists into dictionary under their dtype
+			self.logfile_explists[dtype]=mode_explists
 
-	def get_raw_data(self,filename=None, exp_name=None, dataname='image'):
-		'''Searches for a dataset (exp_name) stored in a Minerva Logfile (filename).
+	# Basic functions, for manually pulling up data directly from h5. 
+	def get_raw_data(self, exp_name=None,filename=None, dataname='image'):
+		'''Manual search for a dataset (exp_name) stored in a Minerva Logfile (filename).
 		Returns the image data (dataname) of the dataset as a 2D numpy array.'''
 		hf = h5py.File(filename, 'r')
 		grp_data = hf.get(exp_name)
@@ -48,17 +57,6 @@ class MinervaManager(object):
 		grp_data = hf.get(exp_name)
 		image_2d_ph1 = grp_data['image_2d_ph1'][:]
 		image_2d_ph2 = grp_data['image_2d_ph2'][:]
-		# V_SW = self.get_attr(filename,exp_name,'V_SW')
-		# V_CM = self.get_attr(filename,exp_name,'V_CM')
-		# f_sw = self.get_attr(filename,exp_name,'f_sw')
-		# T_int = self.get_attr(filename,exp_name,'T_int')
-		# C_int = self.get_attr(filename,exp_name,'C_int')
-		# if (not self.dtype == 'ph'):
-		# 	gain_swcap = np.abs(V_SW-V_CM)*1e-3*f_sw  # Iout/Cin
-		# 	gain_integrator = T_int/C_int  # Vout/Iin
-		# 	gain_overall = gain_swcap*gain_integrator
-		# 	image_2d_ph1 = image_2d_ph1 / gain_overall
-		# 	image_2d_ph2 = image_2d_ph2 / gain_overall
 		return image_2d_ph1 , image_2d_ph2
 
 	def all_attr(self,filename=None, exp_name=None):
@@ -80,8 +78,6 @@ class MinervaManager(object):
 		return datetime.strptime(self.get_attr(filename, exp_name, 'timestamp'), "%Y%m%d_%H%M%S")
 
 	def get_list(self,filename=None, filterstring=None, sortby='time'):
-		if filterstring==None:
-			filterstring = self.filterstring
 		hf = h5py.File(filename, 'r')
 		base_items = list(hf.items())
 		grp_list = []
@@ -94,8 +90,9 @@ class MinervaManager(object):
 			grp_list = sorted(grp_list,key=lambda x: self.get_time(filename,x))
 		return grp_list
 
-	def get_data_stack(self):
-		'''Returns 4 time ordered lists of ph, ect, or impedance data,
+	# Function for automated data handling. Only information needed is the dtype you want to handle
+	def get_data_stack(self,dtype='imp'):
+		'''Returns 4 time ordered lists of ph, ect, or impedance data (dtype),
 		 with one list for each collected phase, one list of timestamps and one list of frame names.
 		Function iterates over each logfile in the directory and compiles 
 		all image data from all logfiles with data type self.dtype.'''
@@ -103,26 +100,26 @@ class MinervaManager(object):
 		frames_ph2=[]
 		timestamps=[]
 		exp_names=[]
-		for lognum,logname in enumerate(self.logfiles):
-			fullname = os.path.join(self.logdir,logname)
-			list_all = self.get_list(fullname,filterstring=self.filterstring,sortby='time')
-			imrange=[0,len(list_all)]
-			for i in tqdm(range(imrange[0],imrange[1]),
-			 desc=' --  Importing {} data from {}  -- '.format(self.filterstring,os.path.basename(logname))):
-				image_2d_ph1,image_2d_ph2 = self.get_data(fullname,list_all[i])
+		for logname in self.logfiles[dtype]:
+			filepath = os.path.join(self.logdir,logname)
+			list_all = self.get_list(filepath,filterstring=self.filters[dtype],sortby='time')
+			for i in tqdm(range(0,len(list_all)), desc=' --  Importing {} data from {}  -- '.format(self.filters[dtype],os.path.basename(logname))):
+				image_2d_ph1,image_2d_ph2 = self.get_data(filepath,list_all[i])
 				frames_ph1.append(image_2d_ph1)
 				frames_ph2.append(image_2d_ph2)
-				timestamps.append(self.get_time(fullname,list_all[i]))
+				timestamps.append(self.get_time(filepath,list_all[i]))
 				exp_names.append(list_all[i])
-		print('Completed import of {} {} images from ({}) logfiles'.format(len(frames_ph1),self.filterstring,len(self.logfiles)))
-		print('Total import size: ',sys.getsizeof(frames_ph1)+sys.getsizeof(frames_ph2)+sys.getsizeof(timestamps)+sys.getsizeof(exp_names),'Bytes')
+		print('Completed import of {} {} images from ({}) logfiles'.format(len(frames_ph1),self.filters[dtype],len(self.logfiles[dtype])))
+		total_size = 0
+		for dataset in [frames_ph1,frames_ph2,timestamps,exp_names]:
+			total_size = total_size+sum(sys.getsizeof(elem) for elem in dataset)
+		print('Total import size: ', total_size, 'Bytes')
 		return frames_ph1, frames_ph2, timestamps, exp_names
-
 
 if __name__ == '__main__':
 	# Example usage, fetching impedance data
 	impdir = r"C:\Users\jtincan\Desktop\F0386_Analysis\F0386_minerva\impedance/"
-	iM = MinervaManager(dtype='imp',logdir=impdir);
+	iM = MinervaManager(logdir=impdir);
 	# Logfile Directory:  C:\Users\jtincan\Desktop\F0386_Analysis\F0386_minerva\impedance/
 	# -- (2) Logfiles of *impedance* datatype -- 
 
