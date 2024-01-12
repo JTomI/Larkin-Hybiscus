@@ -119,11 +119,10 @@ class MinervaManager(object):
 					for logname in self.logfiles[dtype] for exp in self.get_list(os.path.join(self.logdir, logname), 
 						filterstring=self.filters[dtype], sortby='time')]
 		num_images = len(file_paths_exp_names)
-		print(f' --  Importing {num_images} {self.filters[dtype]} images  -- ')
+		print(f' -- (fn:get_data_stack) Importing {num_images} {self.filters[dtype]} images from ({len(self.logfiles[dtype])}) logfiles -- ')
 		timestamps = [self.get_time(file_path, exp_name) for file_path, exp_name in file_paths_exp_names]
 		frames = np.zeros((num_images, nrow, ncol), dtype='float')
 		frames[:] = np.array([self.process_file(file_path, exp_name) for file_path, exp_name in file_paths_exp_names])
-		print(f'Completed import of {num_images} {self.filters[dtype]} images from ({len(self.logfiles[dtype])}) logfiles')
 		# Get the size in Bytes of the full dataset
 		total_size = frames.nbytes + sys.getsizeof(timestamps)+sys.getsizeof(file_paths_exp_names)
 		print('Total import size: ', total_size, 'Bytes')

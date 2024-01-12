@@ -25,10 +25,10 @@ from pylab import cm
 
 def cleanup(images,Nstd=5):
 	'''Standard function for removing debanding effect in impedance/ECT stacks, and removing outliers.'''
-	print(' -- Combining impedance phases -- ')
+	print(f' -- (fn:cleanup) Removing banding and outliers > {Nstd} sigma from mean -- ')
 	images = remove_outliers(images,Nstd=Nstd)
 	images = rm_banding(images)
-	print(' -- Cleaned up {} images -- '.format(images.shape[0]))
+	print(f'Cleaned up {images.shape[0]} images')
 	return images
 
 def rm_banding(images=None):
@@ -41,7 +41,7 @@ def rm_banding(images=None):
 
 def remove_outliers(images=None, Nstd=5):
 	'''Suppress outliers above N standard deviations from the mean of each image by setting their values to the mean.'''
-	# Process each image individually
+	# Process each image in stack individually
 	for i in range(images.shape[0]):
 		image = images[i,:,:] 
 		original_shape = image.shape #Save the original shape
@@ -52,15 +52,15 @@ def remove_outliers(images=None, Nstd=5):
 	return images
 
 def normalize_by_channel(image=None,normrows=None):
-	'''Normalize by channel'''
+	'''Normalize by channel. Deprecated, use rm_banding or cleanup methods. '''
 	ch0mean = np.mean(image[normrows, :32])
 	for ch in range(8):
 		image[:, ch*32:(ch+1)*32] = image[:, ch*32:(ch+1)*32] / np.mean(image[normrows, ch*32:(ch+1)*32]) * ch0mean
 	image = np.abs(image)
 	return image
 
-
 def vrange_crop(image=None, vrange=[-4,1]):
+	'''Deprecated'''
 	med=np.mean(np.ravel(image))
 	std=np.std(np.ravel(image))
 	image[(image-med)<=(vrange[0]*std)] = vrange[0]*std
@@ -266,7 +266,6 @@ def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colorma
 	if save:
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
-
 
 def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 	counts,bins=np.histogram(data, bins=bins);
