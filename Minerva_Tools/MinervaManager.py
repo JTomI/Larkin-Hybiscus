@@ -101,25 +101,23 @@ class MinervaManager(object):
 		return (image_2d_ph1 + image_2d_ph2)/2
 
 	def get_data_stack(self, dtype='imp', nrow=512, ncol=256):
-		 """Detects all .h5 files in working directory and compiles a time ordered image
+		'''Detects all .h5 files in working directory and compiles a time ordered image
 		  sequence of all data in that directory of the specified data type. 
 		  Can handle compilation of impedance/ph timelapses, or ECT stacks. 
 		  Multiphase readouts are averaged together (image_2d_ph1 + image_2d_ph2)/2 before return
 
-	    Keyword arguments:
-	    dtype (str) -- The function grab all data corresponding to 'dtype' from the working directory,  returns it as t-ordered. 
-	    		Available dtype options are in self.filters.keys(), i.e. 'imp', 'ect', 'ph'.
-	    nrow/ncol (int) -- the anticipated dimensions of the image data. Default is Minerva Dimensions.
+		Keyword arguments:
+		dtype (str) -- The function grab all data corresponding to 'dtype' from the working directory,  returns it as t-ordered. 
+				Available dtype options are in self.filters.keys(), i.e. 'imp', 'ect', 'ph'.
+		nrow/ncol (int) -- the anticipated dimensions of the image data. Default is Minerva Dimensions.
 
-	    Return arguments:
-	    frames (3D array with float elements) -- t-ordered image sequence of shape (nimages,nrow,ncol). 
-	    timestamps (list of datetime objects) -- t-ordered list of the timestamps associated with frames array, shape (nimages,)
-		file_paths_exp_names (list of tupled strings) -- t-ordered list of tupled (filepaths, frame names) associated with frames array, shape (nimages,2)
-
-	    """
-		file_paths_exp_names = [(os.path.join(self.logdir, logname), exp) for logname in self.logfiles[dtype]
-								 for exp in self.get_list(os.path.join(self.logdir, logname), 
-								 	filterstring=self.filters[dtype], sortby='time')]
+		Return arguments:
+		frames (3D array with float elements) -- t-ordered image sequence of shape (nimages,nrow,ncol). 
+		timestamps (list of datetime objects) -- t-ordered list of the timestamps associated with frames array, shape (nimages,)
+		file_paths_exp_names (list of tupled strings) -- t-ordered list of tupled (filepaths, frame names) associated with frames array, shape (nimages,2)'''
+		file_paths_exp_names = [(os.path.join(self.logdir, logname), exp) 
+					for logname in self.logfiles[dtype] for exp in self.get_list(os.path.join(self.logdir, logname), 
+						filterstring=self.filters[dtype], sortby='time')]
 		num_images = len(file_paths_exp_names)
 		print(f' --  Importing {num_images} {self.filters[dtype]} images  -- ')
 		timestamps = [self.get_time(file_path, exp_name) for file_path, exp_name in file_paths_exp_names]
