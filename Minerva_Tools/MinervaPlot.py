@@ -23,23 +23,33 @@ from skimage.filters import sobel, threshold_multiotsu
 from skimage.segmentation import watershed
 from pylab import cm
 
+def cleanup(images,Nstd=5):
+	'''Standard function for removing debanding effect in impedance/ECT stacks, and removing outliers.'''
+	print(' -- Combining impedance phases -- ')
+	images = remove_outliers(images,Nstd=Nstd)
+	images = rm_banding(images)
+	print(' -- Cleaned up {} images -- '.format(images.shape[0]))
+	return images
 
-def rm_banding(image=None,normrows=[0,511]):
-	'''Removes banding artifact from channel readout, while preserving mean pixel value in image. 
-	Should be used after get_data function before other processing'''
-	# Record the full frame average of the image before removal
-	fullframeaverage=np.mean(image[normrows[0]:normrows[1],:])
-	# Get the profile of the banding
-	rowaverage=np.mean(image[normrows[0]:normrows[1],:],axis=0)
-	# Make mask of banding and subract it off of image
-	band_mask = np.ones_like(image[normrows[0]:normrows[1],:])
-	axislen = len(band_mask[:,0])
-	for i in range(axislen):
-		band_mask[i,:]=rowaverage
-	image[normrows[0]:normrows[1],:]-=band_mask
-	# Add back in original frame average to preserve global mean
-	image[normrows[0]:normrows[1],:]+=fullframeaverage
-	return image
+def rm_banding(images=None):
+	'''Removes channel readout banding artifact from impedance or ECT stack. Assumes input shape (n,rows,cols).
+	Preserves global mean of each nth image.'''
+	frame_averages = np.mean(images, axis=(1, 2), keepdims=True)# Get the average of each image, broadcast to shape (n,512,256)
+	col_averages = np.mean(images, axis=1, keepdims=True)
+	# Subtract a broadcasted column wise average to remove banding. Then add back in the frame average to preserve each frame's global mean
+	return images + frame_averages - col_averages
+
+def remove_outliers(images=None, Nstd=5):
+	'''Suppress outliers above N standard deviations from the mean of each image by setting their values to the mean.'''
+	# Process each image individually
+	for i in range(images.shape[0]):
+		image = images[i,:,:] 
+		original_shape = image.shape #Save the original shape
+		mean = np.mean(np.ravel(image))#get mean&std per image
+		std = np.std(np.ravel(image))
+		image[np.abs(image - mean) > Nstd * std] = mean # Replace outliers per image
+		images[i] = image.reshape(original_shape)# Retrun to original shape
+	return images
 
 def normalize_by_channel(image=None,normrows=None):
 	'''Normalize by channel'''
@@ -49,12 +59,6 @@ def normalize_by_channel(image=None,normrows=None):
 	image = np.abs(image)
 	return image
 
-def remove_outliers(image=None,Nstd=5):
-	'''Suppress outliers above N standard deviations from mean by setting their values to the mean.'''
-	mean=np.mean(np.ravel(image))
-	std=np.std(np.ravel(image))
-	image[np.abs(image-mean)>np.abs(Nstd*std)] = mean
-	return image
 
 def vrange_crop(image=None, vrange=[-4,1]):
 	med=np.mean(np.ravel(image))
@@ -278,17 +282,6 @@ def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
 		print('(vmin,vmax)=',(vmin,vmax));
 	return vmin,vmax
 
-
-def combine_ph(images_ph1,images_ph2,normrows=[0,511],Nstd=5):
-	'''Standard function for combining impedance/ECT images of different phase.'''
-	ph1 = remove_outliers(np.array(images_ph1),Nstd=Nstd)
-	ph2 = remove_outliers(np.array(images_ph2),Nstd=Nstd)
-	for i in tqdm(range(len(images_ph1)),desc= ' -- Combining impedance phases -- '):
-		ph1[i] = rm_banding(ph1[i],normrows=normrows)
-		ph2[i] = rm_banding(ph2[i],normrows=normrows)
-	final_images= (ph1+ph2)/2
-	return final_images
-
 def detect_edge(image=None,nclass=3,verbose=False):
 	'''Extracts mask of edge with combination otsu threholding and canny edge detection. 
 	The otsu mask will have n regions with pixel values n-1, where n is the number of classes
@@ -316,65 +309,106 @@ def detect_edge(image=None,nclass=3,verbose=False):
 		plt.show()
 	return otsumask, thresholds
 
-def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,mycolormap='Blues',nclass=3,fps=6,verbose=False,save=True):
+def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,impcolormap='Greys',otsucolormap='jet',nclass=3,fps=6,save=False):
 	'''Edge detection masking for pellicle experiments.'''
 	vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
 	if imrange==None:
 		imprange=range(len(images))
 	else:
 		imprange=range(imrange[0],imrange[1],1)   
-	otsumasks=[] #n-region otsu masks
-	binmasks=[] #binary masks processed from otsu  
+	# otsumasks=[] 
+	myframes=[] #graphs
+	#n-region otsu masks
+	otsumasks = [otsumask for otsumask,thresholds in detect_edge(images[i],nclass=nclass,verbose=False) for i in imprange]
+	for i in tqdm(imprange, desc='-- Generating Timelapse --'):
+		otsu_mask,thresholds = detect_edge(images[i],nclass=nclass,verbose=False)
+		otsumasks.append(otsu_mask)
+		if save:
+			tx=timestamps[i]
+			fig, axes = plt.subplots(ncols=2, figsize=(16, 8))
+			fig.suptitle('Impedance Image Classification, Time Elapsed: {}'.format(tx-t0))
+			ax = axes.ravel()
+			ax[0] = plt.subplot(1, 2, 1)
+			ax[1] = plt.subplot(1, 2, 2, sharex=ax[0], sharey=ax[0])
+
+			im1 = ax[0].imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=impcolormap)
+			ax[0].set_title('Impedance')
+			ax[0].axis('off')
+			cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
+			
+			
+			im2 = ax[1].imshow(np.flip(otsu_mask),vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
+			ax[1].set_title('Multi-Otsu')
+			ax[1].axis('off')
+			cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
+			cb2.ax.set_yticklabels(list(range(nclass)))
+			plt.show()
+
+			fig.canvas.draw()   # draw the canvas, cache the renderer
+			im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+			myframes.append(im)
+			plt.close(fig)
+			#Save all frames
+			print(' -- Saving plots as .gif animation -- ')
+			plotdir = os.path.join(manager.logdir,'plots')
+			if(not os.path.exists(plotdir)):
+				os.mkdir(plotdir)
+			path =os.path.join(plotdir,savename+'.gif')
+			imageio.mimsave(path,myframes, fps=fps)
+			print(' --  Animation saved as {}  -- '.format(savename))
+	return otsumasks
+
+def fmask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,impcolormap='Greys',otsucolormap='jet',nclass=3,fps=6,save=False):
+	'''Edge detection masking for pellicle experiments.'''
+	vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
+	numimages=len(images)
+	if imrange==None:
+		imprange=range(numimages)
+	else:
+		imprange=range(imrange[0],imrange[1],1)   
+	otsumasks=np.zeros((numimages, 512, 256),dtype='float') #n-region otsu masks
 	myframes=[] #graphs
 	for i in tqdm(imprange, desc='-- Generating Timelapse --'):
-		tx=timestamps[i]
 		otsu_mask,thresholds = detect_edge(images[i],nclass=nclass,verbose=False)
-		bin_mask = np.zeros_like(otsu_mask)
-		bin_mask[otsu_mask!=(nclass-1)]=1
-		otsumasks.append(otsu_mask)
-		binmasks.append(bin_mask)
-		
-		fig, axes = plt.subplots(ncols=3, figsize=(24, 8))
-		fig.suptitle('Impedance Image Classification, Time Elapsed: {}'.format(tx-t0))
-		ax = axes.ravel()
-		ax[0] = plt.subplot(1, 3, 1)
-		ax[1] = plt.subplot(1, 3, 2)
-		ax[2] = plt.subplot(1, 3, 3, sharex=ax[0], sharey=ax[0])
+		otsumasks[i,:,:]=otsu_mask
+		if save:
+			tx=timestamps[i]
+			fig, axes = plt.subplots(ncols=2, figsize=(16, 8))
+			fig.suptitle('Impedance Image Classification, Time Elapsed: {}'.format(tx-t0))
+			ax = axes.ravel()
+			ax[0] = plt.subplot(1, 2, 1)
+			ax[1] = plt.subplot(1, 2, 2, sharex=ax[0], sharey=ax[0])
 
-		im1 = ax[0].imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=mycolormap)
-		ax[0].set_title('Impedance')
-		ax[0].axis('off')
-		cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
-		
-		
-		im2 = ax[1].imshow(np.flip(otsu_mask),vmin=0,vmax=nclass-1, cmap=cm.get_cmap('plasma', nclass))
-		ax[1].set_title('Multi-Otsu')
-		ax[1].axis('off')
-		cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
-		cb2.ax.set_yticklabels(list(range(nclass)))
-		
-		im3 = ax[2].imshow(np.flip(bin_mask),vmin=0,vmax=1, cmap=cm.get_cmap('jet', 2))
-		ax[2].set_title('Binary')
-		ax[2].axis('off')
-		cb3=fig.colorbar(im3,ax=ax[2],ticks=list(range(2)))
-		cb3.ax.set_yticklabels(list(range(2)))
-		if verbose:
+			im1 = ax[0].imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=impcolormap)
+			ax[0].set_title('Impedance')
+			ax[0].axis('off')
+			cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
+			
+			
+			im2 = ax[1].imshow(np.flip(otsu_mask),vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
+			ax[1].set_title('Multi-Otsu')
+			ax[1].axis('off')
+			cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
+			cb2.ax.set_yticklabels(list(range(nclass)))
 			plt.show()
-		fig.canvas.draw()   # draw the canvas, cache the renderer
-		im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-		im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-		myframes.append(im)
-		plt.close(fig)
-	if save:
-		#Save all frames
-		print(' -- Saving plots as .gif animation -- ')
-		plotdir = os.path.join(manager.logdir,'plots')
-		if(not os.path.exists(plotdir)):
-			os.mkdir(plotdir)
-		path =os.path.join(plotdir,savename+'.gif')
-		imageio.mimsave(path,myframes, fps=fps)
-		print(' --  Animation saved as {}  -- '.format(savename))
-	return otsumasks, binmasks
+
+			fig.canvas.draw()   # draw the canvas, cache the renderer
+			im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+			myframes.append(im)
+			plt.close(fig)
+			#Save all frames
+			print(' -- Saving plots as .gif animation -- ')
+			plotdir = os.path.join(manager.logdir,'plots')
+			if(not os.path.exists(plotdir)):
+				os.mkdir(plotdir)
+			path =os.path.join(plotdir,savename+'.gif')
+			imageio.mimsave(path,myframes, fps=fps)
+			print(' --  Animation saved as {}  -- '.format(savename))
+		else:
+			pass
+	return otsumasks
 
 def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',shifted=True):
 	#Generate the max or mean projections from confocal z-stack and filter out Minerva CMOS artifacts with 2D FFT.
