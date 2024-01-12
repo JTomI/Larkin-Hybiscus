@@ -310,19 +310,16 @@ def detect_edge(image=None,nclass=3,verbose=False):
 
 def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,impcolormap='Greys',otsucolormap='jet',nclass=3,fps=6,save=False):
 	'''Edge detection masking for pellicle experiments.'''
-	vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
 	if imrange==None:
-		imprange=range(len(images))
+		imprange=range(images.shape[0])
 	else:
 		imprange=range(imrange[0],imrange[1],1)   
-	# otsumasks=[] 
-	myframes=[] #graphs
 	#n-region otsu masks
-	otsumasks = [otsumask for otsumask,thresholds in detect_edge(images[i],nclass=nclass,verbose=False) for i in imprange]
-	for i in tqdm(imprange, desc='-- Generating Timelapse --'):
-		otsu_mask,thresholds = detect_edge(images[i],nclass=nclass,verbose=False)
-		otsumasks.append(otsu_mask)
-		if save:
+	otsumasks =  [otsumask for i in imprange for otsumask,thresholds in [detect_edge(images[i], nclass=nclass, verbose=False)]]
+	if save:
+		myframes=[] #graphs
+		vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0]; #Fix vmin/vmax across timelapse
+		for i in tqdm(imprange, desc='-- Generating Animation --'):
 			tx=timestamps[i]
 			fig, axes = plt.subplots(ncols=2, figsize=(16, 8))
 			fig.suptitle('Impedance Image Classification, Time Elapsed: {}'.format(tx-t0))
@@ -335,8 +332,7 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 			ax[0].axis('off')
 			cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
 			
-			
-			im2 = ax[1].imshow(np.flip(otsu_mask),vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
+			im2 = ax[1].imshow(np.flip(otsumasks[i]),vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
 			ax[1].set_title('Multi-Otsu')
 			ax[1].axis('off')
 			cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
@@ -356,57 +352,6 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 			path =os.path.join(plotdir,savename+'.gif')
 			imageio.mimsave(path,myframes, fps=fps)
 			print(' --  Animation saved as {}  -- '.format(savename))
-	return otsumasks
-
-def fmask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,impcolormap='Greys',otsucolormap='jet',nclass=3,fps=6,save=False):
-	'''Edge detection masking for pellicle experiments.'''
-	vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0];
-	numimages=len(images)
-	if imrange==None:
-		imprange=range(numimages)
-	else:
-		imprange=range(imrange[0],imrange[1],1)   
-	otsumasks=np.zeros((numimages, 512, 256),dtype='float') #n-region otsu masks
-	myframes=[] #graphs
-	for i in tqdm(imprange, desc='-- Generating Timelapse --'):
-		otsu_mask,thresholds = detect_edge(images[i],nclass=nclass,verbose=False)
-		otsumasks[i,:,:]=otsu_mask
-		if save:
-			tx=timestamps[i]
-			fig, axes = plt.subplots(ncols=2, figsize=(16, 8))
-			fig.suptitle('Impedance Image Classification, Time Elapsed: {}'.format(tx-t0))
-			ax = axes.ravel()
-			ax[0] = plt.subplot(1, 2, 1)
-			ax[1] = plt.subplot(1, 2, 2, sharex=ax[0], sharey=ax[0])
-
-			im1 = ax[0].imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=impcolormap)
-			ax[0].set_title('Impedance')
-			ax[0].axis('off')
-			cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
-			
-			
-			im2 = ax[1].imshow(np.flip(otsu_mask),vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
-			ax[1].set_title('Multi-Otsu')
-			ax[1].axis('off')
-			cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
-			cb2.ax.set_yticklabels(list(range(nclass)))
-			plt.show()
-
-			fig.canvas.draw()   # draw the canvas, cache the renderer
-			im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-			myframes.append(im)
-			plt.close(fig)
-			#Save all frames
-			print(' -- Saving plots as .gif animation -- ')
-			plotdir = os.path.join(manager.logdir,'plots')
-			if(not os.path.exists(plotdir)):
-				os.mkdir(plotdir)
-			path =os.path.join(plotdir,savename+'.gif')
-			imageio.mimsave(path,myframes, fps=fps)
-			print(' --  Animation saved as {}  -- '.format(savename))
-		else:
-			pass
 	return otsumasks
 
 def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',shifted=True):
