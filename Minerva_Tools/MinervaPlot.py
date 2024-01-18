@@ -59,33 +59,6 @@ def normalize_by_channel(image=None,normrows=None):
 	image = np.abs(image)
 	return image
 
-def vrange_crop(image=None, vrange=[-4,1]):
-	'''Deprecated'''
-	med=np.mean(np.ravel(image))
-	std=np.std(np.ravel(image))
-	image[(image-med)<=(vrange[0]*std)] = vrange[0]*std
-	image[(image-med)>=(vrange[1]*std)] = vrange[1]*std
-	return image
-
-def plot_single(data=None,data_name='',tx=0,t0=0,colormap='Blues',verbose=True,vmin=None,vmax=None,vrange=[-4,1],normrows=None):
-	'''Image should display with orientation such that minerva PCB is to the left'''
-	fig = plt.figure(figsize=(12,6))
-	grid = plt.GridSpec(3, 3, hspace=0.2, wspace=0.2)
-	ax_main = fig.add_subplot(grid[:, :])
-	if (vmin==None and vmax==None):
-		vmin=np.mean(data[normrows,:])+vrange[0]*np.std(data[normrows,:])
-		vmax=np.mean(data[normrows,:])+vrange[1]*np.std(data[normrows,:])
-	im1 = ax_main.imshow(data, vmin=vmin, vmax=vmax, cmap=colormap)
-	fig.colorbar(im1,ax=ax_main)
-	# ax_main.set_title(str(data_name)+ ' time elapsed ' + str(tx-t0))
-	fig.canvas.draw()	   # draw the canvas, cache the renderer
-	im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-	im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-	if verbose:
-		plt.show()
-	plt.close(fig)
-	return im
-
 def image_timelapse(manager,savename,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
 	'''Saves impedance data as a pure image timelapse, no labels/graphs etc.'''
 	normrows=range(normrows[0],normrows[1])
@@ -267,55 +240,22 @@ def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colorma
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
 
-def get_hist(data=None,bins=256,figsize=(12,8),verbose=False):
-	counts,bins=np.histogram(data, bins=bins);
-	places = np.where(counts>1);
-	vmin_i,vmax_i= np.min(places),np.max(places);
-	(vmin,vmax) = (bins[:-1][vmin_i],bins[:-1][vmax_i])
-	if verbose:
-		plt.figure(figsize=figsize);
-		plt.title('Extracting vmin/vmax to set contrast');
-		plt.hist(bins[:-1], bins, weights=counts,label='Counts');
-		plt.hist( [bins[:-1][vmin_i],bins[:-1][vmax_i]], bins, weights=[np.max(counts),np.max(counts)],label='Histogram Edges');
-		plt.legend();
-		print('(vmin,vmax)=',(vmin,vmax));
-	return vmin,vmax
-
-def detect_edge(image=None,nclass=3,verbose=False):
+def detect_edge(image=None,nclass=3):
 	'''Extracts mask of edge with combination otsu threholding and canny edge detection. 
 	The otsu mask will have n regions with pixel values n-1, where n is the number of classes
 	used to characterize the image.'''
 	thresholds = threshold_multiotsu(image,classes=nclass)
 	otsumask = np.digitize(image, bins=thresholds)
-	if verbose:
-		fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(10, 3.5))
-		# Plotting the original image.
-		ax[0].imshow(image, cmap='gray')
-		ax[0].set_title('Original')
-		ax[0].axis('off')
-		# Plotting the histogram and the thresholds obtained from multi-Otsu.
-		ax[1].hist(image.ravel(), bins=255)
-		ax[1].set_title('Histogram')
-		for thresh in thresholds:
-			ax[1].axvline(thresh, color='r')
-		# Plotting the Multi Otsu result.
-		im1=ax[2].imshow(otsumask, cmap='jet')
-		ax[2].set_title('Multi-Otsu result')
-		ax[2].axis('off')
-		cb=fig.colorbar(im1,ax=ax[2],label='Capacitance [Farads]')
-		axcb = cb.ax
-		plt.subplots_adjust()
-		plt.show()
 	return otsumask, thresholds
 
-def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,impcolormap='Greys',otsucolormap='jet',nclass=3,fps=6,save=False):
+def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,impcolormap='Greys',otsucolormap='jet',nclass=3,fps=6,save=False,verbose=False):
 	'''Edge detection masking for pellicle experiments.'''
 	if imrange==None:
 		imprange=range(images.shape[0])
 	else:
 		imprange=range(imrange[0],imrange[1],1)   
 	#n-region otsu masks
-	otsumasks =  [otsumask for i in imprange for otsumask,thresholds in [detect_edge(images[i], nclass=nclass, verbose=False)]]
+	otsumasks =  [otsumask for i in tqdm(imprange for otsumask,thresholds in [detect_edge(images[i], nclass=nclass, verbose=False)])]
 	if save:
 		myframes=[] #graphs
 		vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0]; #Fix vmin/vmax across timelapse
@@ -337,8 +277,8 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 			ax[1].axis('off')
 			cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
 			cb2.ax.set_yticklabels(list(range(nclass)))
-			plt.show()
-
+			if verbose:
+				plt.show()
 			fig.canvas.draw()   # draw the canvas, cache the renderer
 			im = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
 			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
@@ -352,14 +292,13 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 			path =os.path.join(plotdir,savename+'.gif')
 			imageio.mimsave(path,myframes, fps=fps)
 			print(' --  Animation saved as {}  -- '.format(savename))
-	return otsumasks
+	return np.array(otsumasks)
 
 def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',shifted=True):
 	#Generate the max or mean projections from confocal z-stack and filter out Minerva CMOS artifacts with 2D FFT.
 	x = np.arange(0,int((zstack.shape[1]/511)*511),511)
 	y = np.arange(0,int((zstack.shape[2]/256)*256),256)
-	# print('x: ',x)
-	# print('y: ',y)
+
 	mask=np.ones_like(zstack[0,:,:]) # make an empty mask
 	font = font_manager.FontProperties(family='times new roman', size=cbfont)
 	# mask out the edges of the FFT spectrum, the 'lowest' and 'highest' frequency x-y modes
@@ -422,54 +361,3 @@ def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,sa
 		plt.show()
 	return filtered_max, filtered_mean, max_projection, mean_projection, fftabsmax, maskabsmax
 
-def sub_fftfilter(zstack=None, linewidth=10, recoverywidth=100,nstd=1,overview=True):
-	#Generate the max or mean projections from confocal z-stack and filter out Minerva CMOS artifacts with 2D FFT.
-	x = np.arange(0, ((zstack.shape[1] // 511)) * 511, 511)
-	y = np.arange(0, ((zstack.shape[2] // 256)) * 256, 256)
-	mask=np.zeros_like(zstack[0,:,:]) # make an empty mask
-	# mask out the edges of the FFT spectrum, the 'low' frequency x and y modes
-	# mask[0:2*linewidth,:]=1
-	# mask[zstack.shape[1]-2*linewidth:zstack.shape[1],:]=1
-	# mask[:,0:2*linewidth]=1
-	# mask[:,zstack.shape[2]-2*linewidth:zstack.shape[2]]=1
-	# mask out the harmonic frequencies associated with 512/256 pixel array
-	# for i in x:
-	# 	if i!=0 and i!=zstack.shape[1]:
-	# 		mask[i-linewidth:i+linewidth,:]=1
-	# for j in y:
-	# 	if j!=0 and j!=zstack.shape[2]:
-	# 		mask[:,j-linewidth:j+linewidth]=1
-	#Remove any masking at the corners of the FFT where normal/non harmonic image features usually are 
-	mask[0:2*recoverywidth,zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
-	mask[0:2*recoverywidth,0:recoverywidth]=1
-	mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
-	mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],0:recoverywidth]=1
-	# Optionally show the before and after of the FFT masking on just the max projection of the zstack
-	max_projection = np.max(zstack, axis=0)
-	mean_projection = np.mean(zstack, axis=0)
-	print('Z-projections passed')
-	fft_max = fftpack.fft2(max_projection)
-	fft_mean = fftpack.fft2(mean_projection)
-	fftmask_max = fft_max*mask
-	fftmask_mean = fft_mean*mask
-	print('fft masking passed')
-
-	#Inverse FFT to recover image, now FFT filtered
-	filtered_max = abs(fftpack.ifft2(fftmask_max))
-	filtered_mean = abs(fftpack.ifft2(fftmask_mean))
-	print('ifft passed')
-	if overview: #Plot overview of the FFT and it's mask
-		# Plot original projection 
-		fig,ax=plt.subplots(nrows=1,ncols=2,figsize=(10,20))
-		vmin=np.min(abs(fft_max));vmax=np.mean(abs(fft_max))+nstd*np.std(abs(fft_max));
-		im1=ax[0].imshow(abs(fft_max),vmin=vmin,vmax=vmax,cmap='plasma')
-		ax[0].set_title('Raw FFT of max projection')
-		cb=fig.colorbar(im1,ax=ax[0],label='',fraction=0.087,pad=0.04)
-		#Plot fft filtered projection
-		ax[1].axis('off')
-		ax[1].set_title('Masked FFT')
-		fftmin=np.min(	abs(fftmask_max));fftmax=np.mean(abs(fftmask_max))+nstd*np.std(abs(fftmask_max));
-		im2= ax[1].imshow(	abs(fftmask_max),vmin=fftmin,vmax=fftmax,cmap='plasma')
-		cb=fig.colorbar(im2,ax=ax[1],label='',fraction=0.087,pad=0.04)
-		plt.show()
-	return filtered_max, filtered_mean, max_projection, mean_projection, mask
