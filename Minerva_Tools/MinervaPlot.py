@@ -272,7 +272,7 @@ def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colorma
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
 
-def peaks_timelapse(images=None, sigma=3, std_mod=0.1,edgekernel=1):
+def peaks_timelapse(images=None, sigma=3, std_mod=0.1,edgekernel=1,margin=0):
 	'''Masks the area behind the leading/strongest edge found along the row axis of each image in the sequence/timelapse.
 	Used with pellicle experiments to measure displacement over time and growth curves.
 
@@ -282,6 +282,11 @@ def peaks_timelapse(images=None, sigma=3, std_mod=0.1,edgekernel=1):
 						Reduces likelihood of noise being mis-labeling as a signal peak. 
 	std_mod (float) -- Weight filtering for peak prominence, i.e. a peak must be significant,
 						(w.r.t the standard deviation) before it is considered a local maxima.
+	edgekernel (int) -- Used to determine the edge position from the mean edge position of column chunks.
+							Chunk widths are of size edgekernel, in pixels.
+	margin (int) -- Used to give a row offset to the detected edge position.
+						Improves cooperation with otsu method.
+
 	Return arguments:
 	peak_places (3D array) -- Boolean t-ordered array of shape (nimages,nrow,ncol).
 								The sequence represents the calculated masks for each image.'''
@@ -302,6 +307,7 @@ def peaks_timelapse(images=None, sigma=3, std_mod=0.1,edgekernel=1):
 			peakindex= np.where(windowed_linecut==linepeak)[0][0]
 			if peakindex>globpeakindex:
 				globpeakindex=peakindex
+		globpeakindex+=margin
 		peak_places[i,:globpeakindex,:] = 1
 	return peak_places
 
