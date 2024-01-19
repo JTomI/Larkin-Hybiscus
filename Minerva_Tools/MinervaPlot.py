@@ -5,8 +5,6 @@ import matplotlib.patches as patches
 import numpy as np
 import os
 from copy import deepcopy
-import scipy
-from scipy.signal import correlate
 import glob
 from datetime import datetime
 from itertools import chain
@@ -17,12 +15,16 @@ from PIL import Image, ImageOps
 from MinervaManager import MinervaManager as MM
 import time
 from skimage.feature import canny
-from scipy import ndimage as ndi
-from scipy import fftpack
 from skimage.filters import sobel, threshold_multiotsu
 from skimage.segmentation import watershed
+import scipy
+from scipy.signal import argrelextrema, find_peaks, square, decimate, correlate
+from scipy import ndimage as ndi
+from scipy.ndimage import gaussian_filter
+from scipy import fftpack
 from pylab import cm
 
+#------------------------------------ Image Processing Methods --------------------------------
 def cleanup(images,Nstd=5):
 	'''Standard function for removing debanding effect in impedance/ECT stacks, and removing outliers.'''
 	print(f' -- (fn:cleanup) Removing banding and outliers > {Nstd} sigma from mean -- ')
@@ -59,6 +61,36 @@ def normalize_by_channel(image=None,normrows=None):
 	image = np.abs(image)
 	return image
 
+def imp_downsample(images=None,n=1):
+	'''Downsample an impedance dataset of shape (nimages,rows,cols) by averaging each n elements of array along first dimension.'''
+	num_chunks = images.shape[0]//n
+	reshaped_images = images[:num_chunks * n].reshape((num_chunks, n) + images.shape[1:])
+	# Take the mean along the second axis (axis=1) to get the ordered mean
+	return reshaped_images.mean(axis=1)
+
+def meta_downsample(meta_data=None,n=1):
+	'''Downsample a list or 1Darray by just slicing to keep every nth element along first axis'''
+	if type(meta_data)==list:
+		meta_data = np.array(meta_data)
+	return meta_data[::n]
+
+def detect_otsu(image=None,nclass=3):
+	'''Masks an image according to an n-class multi-otsu classification.
+
+	Keyword arguments:
+	image (2D array) -- The image data to be classified
+	nclass (int) -- The number of classes to assign image data to
+
+	Return arguments:
+	otsumask (2D array) -- Array matching shape of image, containing the classification results for each pixel.
+							Similar pixels will share an integer label with values ranging from 0 to nclass-1.
+	thresholds (list) -- List containing a number of thresholds (N=nclass-1) used to classify the pixels in image.
+	'''
+	thresholds = threshold_multiotsu(image,classes=nclass)
+	otsumask = np.digitize(image, bins=thresholds)
+	return otsumask, thresholds
+
+#------------------------------------ Image and Timelapse Display Methods --------------------------------
 def image_timelapse(manager,savename,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
 	'''Saves impedance data as a pure image timelapse, no labels/graphs etc.'''
 	normrows=range(normrows[0],normrows[1])
@@ -240,13 +272,38 @@ def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colorma
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
 
-def detect_edge(image=None,nclass=3):
-	'''Extracts mask of edge with combination otsu threholding and canny edge detection. 
-	The otsu mask will have n regions with pixel values n-1, where n is the number of classes
-	used to characterize the image.'''
-	thresholds = threshold_multiotsu(image,classes=nclass)
-	otsumask = np.digitize(image, bins=thresholds)
-	return otsumask, thresholds
+def peaks_timelapse(images=None, sigma=3, std_mod=0.1,edgekernel=1):
+	'''Masks the area behind the leading/strongest edge found along the row axis of each image in the sequence/timelapse.
+	Used with pellicle experiments to measure displacement over time and growth curves.
+
+	Keyword arguments:
+	images (3D array) -- t-ordered image sequence of shape (nimages,nrow,ncol) 
+	sigma (float) -- Strength of the gaussian_filter to be applied to the gradient of each image.
+						Reduces likelihood of noise being mis-labeling as a signal peak. 
+	std_mod (float) -- Weight filtering for peak prominence, i.e. a peak must be significant,
+						(w.r.t the standard deviation) before it is considered a local maxima.
+	Return arguments:
+	peak_places (3D array) -- Boolean t-ordered array of shape (nimages,nrow,ncol).
+								The sequence represents the calculated masks for each image.'''
+	imagenum = images.shape[0]; rownum = images.shape[1];
+	x = np.linspace(1,rownum,num=rownum,dtype=np.int32)
+	deriv_arrays = np.gradient(images,x,axis=1)
+	smooth = gaussian_filter(deriv_arrays,axes=1,sigma=sigma)
+	deriv_arrays /= np.linalg.norm(deriv_arrays)
+	smooth /= np.linalg.norm(smooth)
+	peak_places = np.zeros_like(images).astype('float')
+	for i in tqdm(range(smooth.shape[0]), desc = ' -- Running Sharp Edge Segmentation -- '):
+		globpeakindex=0
+		for j in range(smooth.shape[2]):
+			windowed_linecut = np.mean(smooth[i,:,j:j+edgekernel],axis=1)
+			prom = std_mod*np.std(windowed_linecut)
+			indices, _ = find_peaks(windowed_linecut, prominence=prom)
+			linepeak = np.max(windowed_linecut[indices])
+			peakindex= np.where(windowed_linecut==linepeak)[0][0]
+			if peakindex>globpeakindex:
+				globpeakindex=peakindex
+		peak_places[i,:globpeakindex,:] = 1
+	return peak_places
 
 def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savename=None,impcolormap='Greys',otsucolormap='jet',nclass=3,fps=6,save=False,verbose=False):
 	'''Edge detection masking for pellicle experiments.'''
@@ -255,27 +312,27 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 	else:
 		imprange=range(imrange[0],imrange[1],1)   
 	#n-region otsu masks
-	otsumasks =  [otsumask for i in tqdm(imprange for otsumask,thresholds in [detect_edge(images[i], nclass=nclass, verbose=False)])]
+	otsumasks =  [otsumask for i in tqdm(imprange, desc=' -- Running Multi-Otsu Segmentation -- ') for otsumask,thresholds in [detect_otsu(images[i], nclass=nclass)]]
 	if save:
 		myframes=[] #graphs
 		vmin = np.min(images); vmax = np.max(images); t0 = timestamps[0]; #Fix vmin/vmax across timelapse
 		for i in tqdm(imprange, desc='-- Generating Animation --'):
 			tx=timestamps[i]
 			fig, axes = plt.subplots(ncols=2, figsize=(16, 8))
-			fig.suptitle('Impedance Image Classification, Time Elapsed: {}'.format(tx-t0))
+			fig.suptitle(f'Impedance Image Classification, Time Elapsed: {tx-t0}')
 			ax = axes.ravel()
 			ax[0] = plt.subplot(1, 2, 1)
-			ax[1] = plt.subplot(1, 2, 2, sharex=ax[0], sharey=ax[0])
+			ax[1] = plt.subplot(1, 2, 2)
 
-			im1 = ax[0].imshow(np.flip(images[i]),vmin=vmin,vmax=vmax, cmap=impcolormap)
+			im1 = ax[0].imshow(images[i],vmin=vmin,vmax=vmax, cmap=impcolormap)
 			ax[0].set_title('Impedance')
 			ax[0].axis('off')
 			cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
 			
-			im2 = ax[1].imshow(np.flip(otsumasks[i]),vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
+			im2 = ax[1].imshow(otsumasks[i],vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
 			ax[1].set_title('Multi-Otsu')
 			ax[1].axis('off')
-			cb2=fig.colorbar(im2,ax=ax[1],label='n={} class'.format(nclass),ticks=list(range(nclass)))
+			cb2=fig.colorbar(im2,ax=ax[1],label=f'n={nclass} class',ticks=list(range(nclass)))
 			cb2.ax.set_yticklabels(list(range(nclass)))
 			if verbose:
 				plt.show()
@@ -284,14 +341,14 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 			myframes.append(im)
 			plt.close(fig)
-			#Save all frames
-			print(' -- Saving plots as .gif animation -- ')
-			plotdir = os.path.join(manager.logdir,'plots')
-			if(not os.path.exists(plotdir)):
-				os.mkdir(plotdir)
-			path =os.path.join(plotdir,savename+'.gif')
-			imageio.mimsave(path,myframes, fps=fps)
-			print(' --  Animation saved as {}  -- '.format(savename))
+		#Save all frames
+		print(' -- Saving plots as .gif animation -- ')
+		plotdir = os.path.join(manager.logdir,'plots')
+		if(not os.path.exists(plotdir)):
+			os.mkdir(plotdir)
+		path =os.path.join(plotdir,savename+'.gif')
+		imageio.mimsave(path,myframes, fps=fps)
+		print(f' --  Animation saved as {path}  -- ')
 	return np.array(otsumasks)
 
 def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',shifted=True):

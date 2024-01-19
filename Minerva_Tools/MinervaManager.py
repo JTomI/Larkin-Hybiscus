@@ -11,6 +11,7 @@ import ray
 from datetime import datetime
 from itertools import chain
 import imageio
+import tifffile as tif
 from tqdm import tqdm
 
 #Ray doesnt like to pickle functions if they arent static, i.e. outside class
@@ -109,7 +110,7 @@ class MinervaManager(object):
 		Keyword arguments:
 		dtype (str) -- The function grab all data corresponding to 'dtype' from the working directory,  returns it as t-ordered. 
 				Available dtype options are in self.filters.keys(), i.e. 'imp', 'ect', 'ph'.
-		nrow/ncol (int) -- the anticipated dimensions of the image data. Default is Minerva Dimensions.
+		nrow/ncol (int) -- The anticipated dimensions of each image. Default is Minerva Dimensions.
 
 		Return arguments:
 		frames (3D array with float elements) -- t-ordered image sequence of shape (nimages,nrow,ncol). 
@@ -127,6 +128,39 @@ class MinervaManager(object):
 		total_size = frames.nbytes + sys.getsizeof(timestamps)+sys.getsizeof(file_paths_exp_names)
 		print('Total import size: ', total_size, 'Bytes')
 		return frames, timestamps, file_paths_exp_names
+
+	def array_to_tiff(self, images=None, savepath=None):
+		'''Function which saves an image sequence in a 3D array as a .tiff stack.
+
+		Keyword arguments:
+		images (3D array) -- t-ordered image sequence to be saved.
+		savepath (str) -- Absolute path to save the .tiff file to. Default "None" saves to MinervaManager's working directory.
+
+		Return arguments:
+		filepath (str) -- The path to the saved .tiff
+		'''
+		# Indicate to tif.imsave to indicate if filesize to be saved as .tiff exceeds 2GB
+		# if int(images.nbytes) >= 2e+9:
+		# 	bigtiff=True
+		# else:
+		# 	bigtiff=False
+		# Default save .tiff in new folder in working directory
+		if savepath == None:
+			plotdir = os.path.join(self.logdir,'tiff_stacks')
+			if(not os.path.exists(plotdir)):
+				os.mkdir(plotdir)
+			print(plotdir)
+			for filelist in list(self.logfiles.values()):
+			    if filelist:
+			        filename = filelist[0].replace('.h5','')
+			        break
+			print(filename)
+			filename = os.path.basename(filename)[0:5]
+			print(filename)
+			savepath = os.path.join(plotdir,filename+'.tiff')
+		tif.imsave(savepath, images, bigtiff=True)
+		print(f' -- (fn:array_to_tiff) {images.shape[0]} image sequence saved as {savepath} -- ')
+		return savepath
 
 if __name__ == '__main__':
 	# Example usage, fetching impedance data from working directory impdir
