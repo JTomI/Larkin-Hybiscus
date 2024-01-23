@@ -129,14 +129,17 @@ class MinervaManager(object):
 		print('Total import size: ', total_size, 'Bytes')
 		return frames, timestamps, file_paths_exp_names
 
-	def array_to_tiff(self, images=None, savepath=None,normto=255):
-		'''Function which saves an image sequence in a 3D array as a .tiff stack.
+	def array_to_tiff(self, images=None, savepath=None,normto=255, astype=np.float64):
+		'''Function which saves an image sequence in a 3D array as a .tiff stack. 
+		Primarily intended for saving impedance arrays as .tiff, but should work for numpy arrays.
 
 		Keyword arguments:
-		images (3D array) -- t-ordered numpy array representing image sequence to be saved.
-		savepath (str) -- Absolute path to save the .tiff file to. Default "None" saves to MinervaManager's working directory.
-		normto (int) -- Image Sequence is saved as uint8, with pixel values rescaled so max is 'normto', default 255.
-
+		images (3D array) -- t-ordered numpy array representing image sequence to be saved. Shape = (t, nrows,ncols)
+		savepath (str) -- Absolute path to save the .tiff file to. Default "None" trys to save to MinervaManager's working directory.
+		astype (str) -- Image Sequence is saved with pixel values cast to type astype. Default float64 preserves image bitdepth.
+		normto (int) -- Scaling factor to renormalize pixel values in the image sequence, used to make images more FiJi friendly.
+							Default renormalized to pixel value range 0->255.
+		
 		Return arguments:
 		filepath (str) -- The path to the saved .tiff
 		'''
@@ -145,7 +148,7 @@ class MinervaManager(object):
 			bigtiff=True
 		else:
 			bigtiff=False
-		# Default save .tiff in new folder in working directory
+		# Default trye to save save .tiff in new folder in working directory
 		if savepath == None:
 			plotdir = os.path.join(self.logdir,'tiff_stacks')
 			if(not os.path.exists(plotdir)):
@@ -160,7 +163,7 @@ class MinervaManager(object):
 			print(filename)
 			savepath = os.path.join(plotdir,filename+'.tiff')
 		im_max=np.max(images)
-		tif.imwrite(savepath, ((normto/im_max)*images).astype('uint64'), bigtiff=bigtiff)
+		tif.imwrite(savepath, ((normto/im_max)*images).astype(astype), bigtiff=bigtiff)
 		print(f' -- (fn:array_to_tiff) {images.shape[0]} image sequence saved as {savepath}. Pixel values were renormalized to range [0,{normto}] -- ')
 		return savepath
 
