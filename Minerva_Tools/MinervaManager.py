@@ -129,21 +129,22 @@ class MinervaManager(object):
 		print('Total import size: ', total_size, 'Bytes')
 		return frames, timestamps, file_paths_exp_names
 
-	def array_to_tiff(self, images=None, savepath=None):
+	def array_to_tiff(self, images=None, savepath=None,normto=255):
 		'''Function which saves an image sequence in a 3D array as a .tiff stack.
 
 		Keyword arguments:
-		images (3D array) -- t-ordered image sequence to be saved.
+		images (3D array) -- t-ordered numpy array representing image sequence to be saved.
 		savepath (str) -- Absolute path to save the .tiff file to. Default "None" saves to MinervaManager's working directory.
+		normto (int) -- Image Sequence is saved as uint8, with pixel values rescaled so max is 'normto', default 255.
 
 		Return arguments:
 		filepath (str) -- The path to the saved .tiff
 		'''
 		# Indicate to tif.imsave to indicate if filesize to be saved as .tiff exceeds 2GB
-		# if int(images.nbytes) >= 2e+9:
-		# 	bigtiff=True
-		# else:
-		# 	bigtiff=False
+		if int(images.nbytes) >= 2e+9:
+			bigtiff=True
+		else:
+			bigtiff=False
 		# Default save .tiff in new folder in working directory
 		if savepath == None:
 			plotdir = os.path.join(self.logdir,'tiff_stacks')
@@ -158,8 +159,9 @@ class MinervaManager(object):
 			filename = os.path.basename(filename)[0:5]
 			print(filename)
 			savepath = os.path.join(plotdir,filename+'.tiff')
-		tif.imsave(savepath, images, bigtiff=True)
-		print(f' -- (fn:array_to_tiff) {images.shape[0]} image sequence saved as {savepath} -- ')
+		im_max=np.max(images)
+		tif.imwrite(savepath, ((normto/im_max)*images).astype('uint64'), bigtiff=bigtiff)
+		print(f' -- (fn:array_to_tiff) {images.shape[0]} image sequence saved as {savepath}. Pixel values were renormalized to range [0,{normto}] -- ')
 		return savepath
 
 if __name__ == '__main__':
