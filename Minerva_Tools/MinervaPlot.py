@@ -293,7 +293,7 @@ def peaks_timelapse(images=None, sigma=3, std_mod=0.1,edgekernel=1,margin=0):
 	imagenum = images.shape[0]; rownum = images.shape[1];
 	x = np.linspace(1,rownum,num=rownum,dtype=np.int32)
 	deriv_arrays = np.gradient(images,x,axis=1)
-	smooth = gaussian_filter(deriv_arrays,axes=1,sigma=sigma)
+	smooth = gaussian_filter(deriv_arrays,sigma=sigma)
 	deriv_arrays /= np.linalg.norm(deriv_arrays)
 	smooth /= np.linalg.norm(smooth)
 	peak_places = np.zeros_like(images).astype('float')
