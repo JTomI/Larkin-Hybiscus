@@ -90,7 +90,15 @@ def detect_otsu(image=None,nclass=3):
 	otsumask = np.digitize(image, bins=thresholds)
 	return otsumask, thresholds
 
-
+def largest_feature(binary_image=None):
+	''' Find the largest contiguous feature in a binary image. Useful '''
+	labeled_image, num_features = ndi.label(binary_image) # Label connected components in the binary image  
+	labeled_feature_sizes = ndi.sum(binary_image, labels=labeled_image, index = range(1, num_features + 1))
+	largest_feature_label = np.argmax(labeled_feature_sizes) + 1
+	# print(largest_feature_label)
+	max_feature = np.zeros_like(binary_image)
+	max_feature[labeled_image==largest_feature_label]=1 # Extract the largest connected component
+	return max_feature , labeled_image
 
 #------------------------------------ Image and Timelapse Display Methods --------------------------------
 def image_timelapse(manager,savename,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
