@@ -14,8 +14,6 @@ import imageio
 import tifffile as tif
 from tqdm import tqdm
 
-#Ray doesnt like to pickle functions if they arent static, i.e. outside class
-
 class MinervaManager(object):
 	'''Manager class with methods for importing and basic handling of data/metadata in Minerva generated .h5 logfiles.'''
 	def __init__(self,logdir=None):
@@ -187,10 +185,7 @@ if __name__ == '__main__':
 	explist = iM.logfile_explists[0]
 	#Fetch the phase pair of impedance images from first timepoint of the first log file
 	image_2d_ph1,image_2d_ph2 = iM.get_data(filename,explist[0])
-	#Fetch a stack of all impedance type images in working directory from first timepoint of the first log file.
-	#Phase pairs are already combined (averaged) into single stack. Also outputs timestamps and tupled filepaths/expnames
+	#Fetch a stack of all of one type images of images in working directory from first timepoint of the first log file.
 	imp_frames, timestamps, file_paths_exp_names = iM.get_data_stack(dtype = 'imp')
-	#Fetch a stack of all ECT type images in working directory from first timepoint of the first log file.
 	ect_frames, timestamps, file_paths_exp_names = iM.get_data_stack(dtype = 'ect')
-	#Fetch a stack of all ph type images in working directory from first timepoint of the first log file.
-	ect_frames, timestamps, file_paths_exp_names = iM.get_data_stack(dtype = 'ph')
+	ph_frames, timestamps, file_paths_exp_names = iM.get_data_stack(dtype = 'ph')

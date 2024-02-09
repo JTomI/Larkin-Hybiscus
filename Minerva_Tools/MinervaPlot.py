@@ -160,7 +160,6 @@ def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	"""Display and save a single impedance image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
 	image=deepcopy(image) # make sure not to modify original
 	cmap_disc = cm.get_cmap(otsu_colormap, nclass) # Make a discreet n-class colormap
-	 #Shift unit to fFarads for later
 	n1,n2=std_range;
 	if vmin == None:
 		vmin=np.mean(image)+n1*np.std(image);
@@ -168,20 +167,13 @@ def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 		vmax=np.mean(image)+n2*np.std(image);
 	thresholds = threshold_multiotsu(image,classes=nclass)
 	otsumask = np.digitize(image, bins=thresholds)
-
 	image*=1e15;vmin*=1e15;vmax*=1e15;thresholds*=1e15;
 	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
 	im=ax[0].imshow(image,vmin=vmin,vmax=vmax, cmap=imp_colormap)
 	ax[0].set_title('Impedance Image')
-	# ax[0].axis('off')
 	cb0=fig.colorbar(im,ax=ax[0],label='Capacitance [fFarads]')
-
 	ax[1].hist(image.ravel(), bins=nbins)
 	ax[1].set_title('Capacitance Spectrum')
-	# ax[1].fill_between(range(thresholds[0]-vmin),vmin, thresholds[0], alpha=alpha)
-
-	# for i in range(len(thresholds)):
-	# 	ax[1].axvline(thresholds[i], color=cmap_disc[i],label='Class threshold n={}'.format(i),alpha=alpha)
 	for thresh in thresholds:
 		ax[1].axvline(thresh, color='r',label='otsu-thresh')
 	ax[1].set_xlabel('Capacitance [fFarads]')
@@ -189,10 +181,8 @@ def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	ax[1].axvline(vmin,label='vmin',color='orange')
 	ax[1].axvline(vmax,label='vmax',color='green')
 	ax[1].legend()
-
 	im1=ax[2].imshow(otsumask, cmap=cmap_disc)
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
-	# ax[2].axis('off')
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
 	cb1.ax.set_yticklabels(list(range(nclass)))
 	print('vmin=',vmin,'[fFarad]', 'vmax=',vmax,'[fFarad]')
@@ -204,7 +194,6 @@ def ect_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	"""Display and save a single impedance image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
 	image=deepcopy(image) # make sure not to modify original
 	cmap_disc = cm.get_cmap(otsu_colormap, nclass) # Make a discreet n-class colormap
-	 #Shift unit to fFarads for later
 	n1,n2=std_range;
 	if vmin == None:
 		vmin=np.mean(image)+n1*np.std(image);
@@ -212,20 +201,12 @@ def ect_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 		vmax=np.mean(image)+n2*np.std(image);
 	thresholds = threshold_multiotsu(image,classes=nclass)
 	otsumask = np.digitize(image, bins=thresholds)
-
-	# image*=1e15;vmin*=1e15;vmax*=1e15;thresholds*=1e15;
 	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
 	im=ax[0].imshow(image,vmin=vmin,vmax=vmax, cmap=imp_colormap)
 	ax[0].set_title('ECT Image')
-	# ax[0].axis('off')
 	cb0=fig.colorbar(im,ax=ax[0],label='Capacitance [Farads]')
-
 	ax[1].hist(image.ravel(), bins=nbins)
 	ax[1].set_title('Capacitance Spectrum')
-	# ax[1].fill_between(range(thresholds[0]-vmin),vmin, thresholds[0], alpha=alpha)
-
-	# for i in range(len(thresholds)):
-	# 	ax[1].axvline(thresholds[i], color=cmap_disc[i],label='Class threshold n={}'.format(i),alpha=alpha)
 	for thresh in thresholds:
 		ax[1].axvline(thresh, color='r',label='otsu-thresh')
 	ax[1].set_xlabel('Capacitance [Farads]')
@@ -233,10 +214,8 @@ def ect_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	ax[1].axvline(vmin,label='vmin',color='orange')
 	ax[1].axvline(vmax,label='vmax',color='green')
 	ax[1].legend()
-
 	im1=ax[2].imshow(otsumask, cmap=cmap_disc)
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
-	# ax[2].axis('off')
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
 	cb1.ax.set_yticklabels(list(range(nclass)))
 	print('vmin=',vmin,'[Farad]', 'vmax=',vmax,'[Farad]')
@@ -247,7 +226,6 @@ def ect_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colormap='plasma', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600):
 	"""Display and save a single tiff image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
 	image=deepcopy(image) # make sure not to modify original
-	 #Shift unit to fFarads for later
 	n1,n2=std_range;
 	if vmin == None:
 		vmin=np.mean(image)+n1*np.std(image);
@@ -255,13 +233,10 @@ def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colorma
 		vmax=np.mean(image)+n2*np.std(image);
 	thresholds = threshold_multiotsu(image,classes=nclass)
 	otsumask = np.digitize(image, bins=thresholds)
-
 	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
 	im=ax[0].imshow(image,vmin=vmin,vmax=vmax, cmap=tiff_colormap)
 	ax[0].set_title('Original Tiff')
-	# ax[0].axis('off')
 	cb0=fig.colorbar(im,ax=ax[0],label='Intensity [a.u.]')
-
 	ax[1].hist(image.ravel(), bins=nbins)
 	ax[1].set_title('Histogram')
 	for thresh in thresholds:
@@ -271,10 +246,8 @@ def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colorma
 	ax[1].axvline(vmin,label='vmin',color='orange')
 	ax[1].axvline(vmax,label='vmax',color='green')
 	ax[1].legend()
-
 	im1=ax[2].imshow(otsumask, cmap=cm.get_cmap(otsu_colormap, nclass))
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
-	# ax[2].axis('off')
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
 	cb1.ax.set_yticklabels(list(range(nclass)))
 	print('vmin=',vmin,'[a.u]', 'vmax=',vmax,'[a.u]')
@@ -339,12 +312,10 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 			ax = axes.ravel()
 			ax[0] = plt.subplot(1, 2, 1)
 			ax[1] = plt.subplot(1, 2, 2)
-
 			im1 = ax[0].imshow(images[i],vmin=vmin,vmax=vmax, cmap=impcolormap)
 			ax[0].set_title('Impedance')
 			ax[0].axis('off')
 			cb1=fig.colorbar(im1,ax=ax[0],label='Capacitance [Farads]')
-			
 			im2 = ax[1].imshow(otsumasks[i],vmin=0,vmax=nclass-1, cmap=cm.get_cmap(otsucolormap, nclass))
 			ax[1].set_title('Multi-Otsu')
 			ax[1].axis('off')
@@ -357,7 +328,6 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 			im  = im.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 			myframes.append(im)
 			plt.close(fig)
-		#Save all frames
 		print(' -- Saving plots as .gif animation -- ')
 		plotdir = os.path.join(manager.logdir,'plots')
 		if(not os.path.exists(plotdir)):
