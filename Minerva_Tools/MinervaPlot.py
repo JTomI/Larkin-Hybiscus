@@ -185,7 +185,7 @@ def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
 	cb1.ax.set_yticklabels(list(range(nclass)))
-	print('vmin=',vmin,'[fFarad]', 'vmax=',vmax,'[fFarad]')
+	# print('vmin=',vmin,'[fFarad]', 'vmax=',vmax,'[fFarad]')
 	if save:
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
@@ -218,7 +218,7 @@ def ect_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
 	cb1.ax.set_yticklabels(list(range(nclass)))
-	print('vmin=',vmin,'[Farad]', 'vmax=',vmax,'[Farad]')
+	# print('vmin=',vmin,'[Farad]', 'vmax=',vmax,'[Farad]')
 	if save:
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
@@ -399,7 +399,7 @@ def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,sa
 	cb.ax.tick_params(labelsize=cbtickfont) 
 	cb.ax.yaxis.label.set_font_properties(font)
 	if savename!=None:
-		plt.savefig(savename+'.tif', transparent=True,dpi=600)
+		plt.savefig(savename, transparent=True,dpi=600,format='svg')
 	if overview: #Plot overview of the FFT and it's mask
 		plt.show()
 	return filtered_max, filtered_mean, max_projection, mean_projection, fftabsmax, maskabsmax
