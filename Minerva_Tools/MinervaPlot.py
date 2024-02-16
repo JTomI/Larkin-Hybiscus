@@ -156,7 +156,7 @@ def graph_timelapse(manager=None,savename=None,images=None, timestamps=None,imra
 	print(' --  Animation saved as {}  -- '.format(savename))
 	return 1
 
-def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap='Greys', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600,alpha=0.5):
+def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap='Greys', otsu_colormap='jet', nbins=255, nclass=3, figsize=(20,7),save=True,savename='imp_plot',dpi=600,alpha=0.5,rescale_factor=1e15):
 	"""Display and save a single impedance image alongside it's histogram and a multi-class otsu segmentation result. Intended for quick overview."""
 	image=deepcopy(image) # make sure not to modify original
 	cmap_disc = cm.get_cmap(otsu_colormap, nclass) # Make a discreet n-class colormap
@@ -167,7 +167,8 @@ def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 		vmax=np.mean(image)+n2*np.std(image);
 	thresholds = threshold_multiotsu(image,classes=nclass)
 	otsumask = np.digitize(image, bins=thresholds)
-	image*=1e15;vmin*=1e15;vmax*=1e15;thresholds*=1e15;
+	if np.mean(image)<(1/rescale_factor):
+		image*=rescale_factor;vmin*=rescale_factor;vmax*=rescale_factor;thresholds*=rescale_factor;
 	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
 	im=ax[0].imshow(image,vmin=vmin,vmax=vmax, cmap=imp_colormap)
 	ax[0].set_title('Impedance Image')
