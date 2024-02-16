@@ -185,7 +185,7 @@ def imp_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
 	cb1.ax.set_yticklabels(list(range(nclass)))
-	# print('vmin=',vmin,'[fFarad]', 'vmax=',vmax,'[fFarad]')
+	print('imp_min=',vmin,'[Farad]', 'imp_max=',vmax,'[Farad]')
 	if save:
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
@@ -218,7 +218,7 @@ def ect_display(image=None, std_range=(-4,2),vmin=None, vmax=None, imp_colormap=
 	ax[2].set_title('Multi-Otsu Result (n={} class)'.format(nclass))
 	cb1=fig.colorbar(im1,ax=ax[2],label='classification #'.format(nclass),ticks=list(range(nclass)))
 	cb1.ax.set_yticklabels(list(range(nclass)))
-	# print('vmin=',vmin,'[Farad]', 'vmax=',vmax,'[Farad]')
+	print('ect_min=',vmin,'[fFarad]', 'ect_max=',vmax,'[fFarad]')
 	if save:
 		plt.savefig('{}.tif'.format(savename), transparent=True,dpi=dpi)
 	return otsumask, thresholds, vmin, vmax
@@ -235,10 +235,10 @@ def tiff_display(image=None, std_range=(-4,2),vmin=None, vmax=None, tiff_colorma
 	otsumask = np.digitize(image, bins=thresholds)
 	fig, ax = plt.subplots(nrows=1, ncols=3, figsize=figsize)
 	im=ax[0].imshow(image,vmin=vmin,vmax=vmax, cmap=tiff_colormap)
-	ax[0].set_title('Original Tiff')
+	ax[0].set_title('Tiff Image')
 	cb0=fig.colorbar(im,ax=ax[0],label='Intensity [a.u.]')
 	ax[1].hist(image.ravel(), bins=nbins)
-	ax[1].set_title('Histogram')
+	ax[1].set_title('Intensity Spectrum')
 	for thresh in thresholds:
 		ax[1].axvline(thresh, color='r',label='otsu-thresh')
 	ax[1].set_xlabel('Intensity [a.u.]')
