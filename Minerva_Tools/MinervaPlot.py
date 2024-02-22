@@ -82,7 +82,7 @@ def detect_otsu(image=None,nclass=3):
 	nclass (int) -- The number of classes to assign image data to
 
 	Return arguments:
-	otsumask (2D array) -- Array matching shape of image, containing the classification results for each pixel.
+	otsumask (int 2D array) -- Array matching shape of image, containing the classification results for each pixel.
 							Similar pixels will share an integer label with values ranging from 0 to nclass-1.
 	thresholds (list) -- List containing a number of thresholds (N=nclass-1) used to classify the pixels in image.
 	'''
@@ -91,14 +91,93 @@ def detect_otsu(image=None,nclass=3):
 	return otsumask, thresholds
 
 def largest_feature(binary_image=None):
-	''' Find the largest contiguous feature in a binary image. Useful '''
+	''' Find the largest contiguous feature in a binary image.
+
+	Keyword arguments:
+	binary_image (bool 2D array) -- A binary image with some number of clusters
+
+	Return arguments:
+	max_feature (bool 2D array) -- A new binary image containing only the largest cluster
+	labeled_image (int 2D array) -- A labeled version of the input image, where the pixels of each cluster 
+										have been given an integer value indicating their grouping. 
+	'''
 	labeled_image, num_features = ndi.label(binary_image) # Label connected components in the binary image  
 	labeled_feature_sizes = ndi.sum(binary_image, labels=labeled_image, index = range(1, num_features + 1))
-	largest_feature_label = np.argmax(labeled_feature_sizes) + 1
-	# print(largest_feature_label)
 	max_feature = np.zeros_like(binary_image)
 	max_feature[labeled_image==largest_feature_label]=1 # Extract the largest connected component
 	return max_feature , labeled_image
+
+def fft_mask(images=None, linewidth=10, recoverywidth=100, gridshape=(511,256)):
+	'''Generates a mask in frequency domain that suppressed periodic features of the CMOS in optical images. 
+	(col, row) features of the Minerva CMOS show up at (512,256) pixel intervals in optical data.
+
+	Keyword arguments:
+	images (2D or 3D array) -- Image sequence of shape (nrow, ncol) or (nimages,nrow,ncol) 
+	linewidth (int) -- Along each harmonic of CMOS pattern, the FFT value is set to zero with a mask. High linewidth
+						value improves suppression of less coherent harmonics but loses signal, and vice-versa.
+	recoverywidth (int) -- Low frequency in FFT usally correlates with image signal you want. The low f region spanning 
+							(dfx,dfy) = (0->2*recoverywidth, 0->recoverywidth) is not suppressed
+	gridshape (tuple int) -- The 2D shape of the underlying CMOS array appearing in the optical image
+
+	Return arguments:
+	mask (bool 2D array) -- A 2D binary mask, of same x,y shape as input 'images'. Corresponds to
+						 FFT regions s.t. grid features are suppressed w.r.t. useful image signal. 
+	'''
+	ncols,nrows = gridshape
+	if len(images.shape)==3: # Handle single images as well as stacks
+		mask=np.ones_like(images[0,:,:])
+	else:
+		mask = np.ones_like(images)
+	# mask out the harmonic frequencies associated with 512/256 pixel array
+	x = np.arange(0,int((mask.shape[0]/ncols)*ncols),ncols)
+	y = np.arange(0,int((mask.shape[1]/nrows)*nrows),nrows)
+	for i in x:
+		mask[i-linewidth:i+linewidth,:]=0
+	for j in y:
+		mask[:,j-linewidth:j+linewidth]=0
+	# mask out the edges of the FFT spectrum, the 'lowest' and 'highest' frequency x-y modes
+	mask[0:2*linewidth,:]=0
+	mask[mask.shape[0]-2*linewidth:mask.shape[0],:]=0
+	mask[:,0:2*linewidth]=0
+	mask[:,mask.shape[1]-2*linewidth:mask.shape[1]]=0
+	#Remove any masking at the corners of the FFT where normal/non harmonic image features usually are 
+	mask[0:2*recoverywidth,mask.shape[1]-recoverywidth:mask.shape[1]]=1
+	mask[0:2*recoverywidth,0:recoverywidth]=1
+	mask[mask.shape[0]-2*recoverywidth:mask.shape[0],mask.shape[1]-recoverywidth:mask.shape[1]]=1
+	mask[mask.shape[0]-2*recoverywidth:mask.shape[0],0:recoverywidth]=1
+	return mask
+
+def fftfilter(image=None,linewidth=10,recoverywidth=100,gridshape=(511,256),shifted=True,savename=None,figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',nstd=1,dpi=600):
+	'''Filters out periodic CMOS grid features from an optical image by finding suppressing them in the FFT spectrum.
+
+	Keyword arguments:
+	image (2D array) -- Image with grid features needing suppression
+	linewidth (int) -- Along each harmonic of CMOS pattern, the FFT value is set to zero with a mask. High linewidth
+						value improves suppression of less coherent harmonics but loses signal, and vice-versa.
+	recoverywidth (int) -- Low frequency in FFT usally correlates with image signal you want. The low f region spanning 
+							(dfx,dfy) = (0->2*recoverywidth, 0->recoverywidth) is not suppressed
+	gridshape (tuple int) -- The 2D shape of the underlying CMOS array appearing in the optical image
+	shifted (bool) -- If True the FFT spectrum is recentered around zero, else the spectrum is positive real valued.
+	savename (str) -- Filename with absolut path to save file to. Use filetype extension .svg .
+
+	Return arguments:
+	mask (bool 2D array) -- A 2D binary mask, of same x,y shape as input 'images'. Corresponds to
+						 FFT regions s.t. grid features are suppressed w.r.t. useful image signal. 
+	'''
+	mask = fft_mask(images=image, linewidth=linewidth, recoverywidth=recoverywidth) 
+	fft = np.flip(fftpack.fft2(image),axis=1)
+	fftmasked = np.flip(fft*mask,axis=1)
+	if shifted: # plot the FFT spectrum recentered around zero
+		fftabs = abs(np.fft.fftshift(fft,axes=(0,1))).astype('int')
+		maskabs = abs(np.fft.fftshift(fftmasked,axes=(0,1))).astype('int')
+	else: # plot the FFT spectrum as positive-real valued only
+		fftabs = abs(fft).astype('int')
+		maskabs = abs(fftmasked).astype('int')
+	filtered_image = abs(fftpack.ifft2(fftmasked))#Invert FFT to recover image
+	if savename!=None: # Plot max projection example, save to savepath
+		fft_plot(absfft=fftabs, maskedfft=maskabs, nstd=nstd, savename=savename, 
+			figsize=figsize,wpad=wpad,titlefont=titlefont,cbtickfont=cbtickfont,axlabelfont=axlabelfont,cbfont=cbfont,cmap=cmap,dpi=dpi)
+	return filtered_image, fftabs, maskabs
 
 #------------------------------------ Image and Timelapse Display Methods --------------------------------
 def image_timelapse(manager,savename,data_times=None,data_names=None,vrange=[-4,1],normrows=[200,300],colormap='Blues',verbose=True,fps=10):
@@ -338,70 +417,25 @@ def mask_timelapse(manager=None,images=None,timestamps=None,imrange=None,savenam
 		print(f' --  Animation saved as {path}  -- ')
 	return np.array(otsumasks)
 
-def fftfilter(zstack=None,linewidth=10,recoverywidth=100,nstd=1,overview=True,savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',shifted=True):
-	#Generate the max or mean projections from confocal z-stack and filter out Minerva CMOS artifacts with 2D FFT.
-	x = np.arange(0,int((zstack.shape[1]/511)*511),511)
-	y = np.arange(0,int((zstack.shape[2]/256)*256),256)
-
-	mask=np.ones_like(zstack[0,:,:]) # make an empty mask
+def fft_plot(absfft=None,maskedfft=None, nstd=1, savename=None, figsize=(15,20),wpad=4,titlefont=20,cbtickfont=20,axlabelfont=20,cbfont=20,cmap='Greys_r',dpi=600):
+	'''Function for plotting before and after fftfiltering'''
+	fig,ax = plt.subplots(nrows=1,ncols=2,figsize=figsize)
 	font = font_manager.FontProperties(family='times new roman', size=cbfont)
-	# mask out the edges of the FFT spectrum, the 'lowest' and 'highest' frequency x-y modes
-	mask[0:2*linewidth,:]=0
-	mask[zstack.shape[1]-2*linewidth:zstack.shape[1],:]=0
-	mask[:,0:2*linewidth]=0
-	mask[:,zstack.shape[2]-2*linewidth:zstack.shape[2]]=0
-	# mask out the harmonic frequencies associated with 512/256 pixel array
-	for i in x:
-		mask[i-linewidth:i+linewidth,:]=0
-	for j in y:
-		mask[:,j-linewidth:j+linewidth]=0
-	#Remove any masking at the corners of the FFT where normal/non harmonic image features usually are 
-	mask[0:2*recoverywidth,zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
-	mask[0:2*recoverywidth,0:recoverywidth]=1
-	mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],zstack.shape[2]-recoverywidth:zstack.shape[2]]=1
-	mask[zstack.shape[1]-2*recoverywidth:zstack.shape[1],0:recoverywidth]=1
-	# Optionally show the before and after of the FFT masking on just the max projection of the zstack
-	max_projection = np.max(zstack, axis=0)
-	mean_projection = np.mean(zstack, axis=0)
-	print('Z-projections passed')
-	fft_max = np.flip(fftpack.fft2(max_projection),axis=1)
-	fft_mean = fftpack.fft2(mean_projection)
-	fftmask_max = np.flip(fft_max*mask,axis=1)
-	fftmask_mean = fft_mean*mask
-	print('fft masking passed')
-	if shifted:
-		fftabsmax = abs(np.fft.fftshift(fft_max,axes=(0,1))).astype('int')
-		maskabsmax = abs(np.fft.fftshift(fftmask_max,axes=(0,1))).astype('int')
-	else:
-		fftabsmax = abs(fft_max).astype('int')
-		maskabsmax = abs(fftmask_max).astype('int')
-	#Inverse FFT to recover image, now FFT filtered
-	filtered_max = abs(fftpack.ifft2(fftmask_max))
-	filtered_mean = abs(fftpack.ifft2(fftmask_mean))
-	print('ifft passed')
-	# Plot original projection 
-	fig,ax=plt.subplots(nrows=1,ncols=2,figsize=figsize)
 	fig.tight_layout(pad=wpad)
-	vmin=np.min(fftabsmax);vmax=np.mean(fftabsmax)+nstd*np.std(fftabsmax);
-	im1=ax[0].imshow(fftabsmax,vmin=vmin,vmax=vmax,cmap=cmap)
-	ax[0].set_title('Normalized 2D-FFT Spectrum',fontsize=titlefont)
-	ax[0].set_xlabel(r'fx  1/[px]', fontsize=axlabelfont)
-	ax[0].set_ylabel(r'fy  1/[px]',fontsize=axlabelfont)
-	cb=fig.colorbar(im1,ax=ax[0],label='Intensity [a.u.]',fraction=0.087,pad=0.04)
-	cb.ax.tick_params(labelsize=cbtickfont) 
-	cb.ax.yaxis.label.set_font_properties(font)
-	#Plot fft filtered projection
-	ax[1].set_title('Masked 2D-FFT Spectrum',fontsize=titlefont)
-	ax[1].set_xlabel(r'fx 1/[px]', fontsize=axlabelfont)
-	ax[1].set_ylabel(r'fy  1/[px]',fontsize=axlabelfont)
-	fftmin=np.min(fftabsmax);fftmax=np.mean(fftabsmax)+nstd*np.std(fftabsmax);
-	im2= ax[1].imshow(maskabsmax,vmin=fftmin,vmax=fftmax,cmap=cmap)
-	cb=fig.colorbar(im2,ax=ax[1],label='Intensity [a.u.]',fraction=0.087,pad=0.04)
-	cb.ax.tick_params(labelsize=cbtickfont) 
-	cb.ax.yaxis.label.set_font_properties(font)
-	if savename!=None:
-		plt.savefig(savename, transparent=True,dpi=600,format='svg')
-	if overview: #Plot overview of the FFT and it's mask
-		plt.show()
-	return filtered_max, filtered_mean, max_projection, mean_projection, fftabsmax, maskabsmax
+	fftmin=np.min(absfft); fftmax=np.mean(absfft)+nstd*np.std(absfft);
+	im1 = ax[0].imshow(absfft,vmin=fftmin,vmax=fftmax,cmap=cmap)
+	im2 = ax[1].imshow(maskedfft,vmin=fftmin,vmax=fftmax,cmap=cmap)
 
+	ims=(im1,im2); titles=('Normalized 2D-FFT Spectrum','Masked 2D-FFT Spectrum');
+	for i in range(ax.shape[0]):
+		ax[i].set_xlabel(r'$f_x\ [px]^{-1}$', fontsize=axlabelfont)
+		ax[i].set_ylabel(r'$f_y\ [px]^{-1}$', fontsize=axlabelfont)
+		ax[i].set_title(titles[i], fontsize=titlefont)
+		cb=fig.colorbar(ims[i],ax=ax[i],label='Intensity [a.u.]',fraction=0.087,pad=0.04)
+		cb.ax.tick_params(labelsize=cbtickfont) 
+		cb.ax.yaxis.label.set_font_properties(font)
+	if savename!=None:
+		plt.savefig(savename, transparent=True, dpi=dpi, format='svg')
+		print(f'-- FFT plot saved as {savename} --')
+	plt.show()
+	return fig
